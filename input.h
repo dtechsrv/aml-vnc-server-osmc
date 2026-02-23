@@ -1,5 +1,5 @@
-#ifndef NEWINPUT_H
-#define NEWINPUT_H
+#ifndef INPUT_H
+#define INPUT_H
 
 #include "common.h"
 
@@ -7,12 +7,6 @@
 #include <linux/uinput.h>
 
 #include <rfb/keysym.h>
-
-#define KEY_SOFT1 KEY_UNKNOWN
-#define KEY_SOFT2 KEY_UNKNOWN
-#define KEY_CENTER KEY_UNKNOWN
-#define KEY_SHARP KEY_UNKNOWN
-#define KEY_STAR KEY_UNKNOWN
 
 #define BTN_LEFT_MASK 0x1
 #define BTN_MIDDLE_MASK 0x2

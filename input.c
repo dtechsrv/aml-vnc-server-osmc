@@ -21,7 +21,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include "newinput.h"
+#include "input.h"
 
 int virt_kbd, virt_ptr;
 int down_keys[KEY_CNT];

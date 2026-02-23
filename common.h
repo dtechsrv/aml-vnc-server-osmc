@@ -47,31 +47,26 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <rfb/rfb.h>
 
-#include "screenformat.h"
-
 #define L(...) do{ printf(__VA_ARGS__); } while (0);
 #endif
 
-struct fbinfo {
-	unsigned int version;
-	unsigned int bpp;
-	unsigned int size;
-	unsigned int width;
-	unsigned int height;
-	unsigned int red_offset;
-	unsigned int red_length;
-	unsigned int blue_offset;
-	unsigned int blue_length;
-	unsigned int green_offset;
-	unsigned int green_length;
-	unsigned int alpha_offset;
-	unsigned int alpha_length;
-} __attribute__((packed));
+typedef struct _screenformat {
+	uint16_t width;
+	uint16_t height;
 
-typedef int (*init_fn_type)(void);
-typedef int (*close_fn_type)(void);
-typedef unsigned char * (*readfb_fn_type)(void);
-typedef screenformat (*getscreenformat_fn_type)(void);
+	uint8_t bitsPerPixel;
+
+	uint16_t redMax;
+	uint16_t greenMax;
+	uint16_t blueMax;
+
+	uint8_t redShift;
+	uint8_t greenShift;
+	uint8_t blueShift;
+
+	uint32_t size;
+	uint32_t pad;
+} screenformat;
 
 extern screenformat screenFormat;
 

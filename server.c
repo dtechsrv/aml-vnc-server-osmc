@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "common.h"
 #include "version.h"
 #include "framebuffer.h"
-#include "newinput.h"
+#include "input.h"
 #include "updatescreen.h"
 
 #include <time.h>

@@ -30,8 +30,6 @@ screenformat screenFormat;
 int fbfd = -1;
 unsigned int *fbmmap;
 
-int roundUpToPageSize(int x);
-
 struct fb_var_screeninfo screenInfo;
 struct fb_fix_screeninfo fixScreenInfo;
 
@@ -42,7 +40,7 @@ void updateFrameBufferInfo(void) {
 	}
 }
 
-inline int roundUpToPageSize(int x) {
+int roundUpToPageSize(int x) {
 	return (x + (sysconf(_SC_PAGESIZE)-1)) & ~(sysconf(_SC_PAGESIZE)-1);
 }
 
