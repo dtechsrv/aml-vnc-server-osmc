@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Header file for screen update and diff logic
+
 #ifndef UPDATESCREEN_H
 #define UPDATESCREEN_H
 

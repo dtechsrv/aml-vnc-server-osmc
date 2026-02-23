@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Version information
+
 #ifndef VERSION_H
 #define VERSION_H
 

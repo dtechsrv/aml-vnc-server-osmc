@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Header file for virtual input devices
+
 #ifndef INPUT_H
 #define INPUT_H
 
