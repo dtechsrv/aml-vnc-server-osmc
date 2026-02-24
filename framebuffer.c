@@ -81,9 +81,9 @@ void updateFrameBufferInfo(void) {
 		screenInfo.stride = fb->pitches[0];
 		screenInfo.pixel_format = fb->pixel_format;
 
-		fb_pixels_per_line = screenInfo.stride / 4;
-
 		updateScreenFormat();
+
+		fb_pixels_per_line = screenInfo.stride / (screenFormat.bitsPerPixel / 8);
 
 		drmModeFreeFB2(fb);
 	}
@@ -102,6 +102,18 @@ void initFrameBuffer(void) {
 		exit(EXIT_FAILURE);
 	} else {
 		L(" The DRM device has been attached.\n");
+	}
+
+	if (drmDropMaster(drm_fd) != 0) {
+		if (errno != EPERM && errno != EINVAL) {
+			L(" drmDropMaster failed: %s\n", strerror(errno));
+			close(drm_fd);
+			exit(EXIT_FAILURE);
+		} else {
+			L(" DRM master not owned, continuing.\n");
+		}
+	} else {
+		L(" DRM master dropped successfully.\n");
 	}
 
 	findActiveCrtc();
@@ -141,9 +153,9 @@ void initFrameBuffer(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	fb_pixels_per_line = screenInfo.stride / 4;
-
 	updateScreenFormat();
+
+	fb_pixels_per_line = screenInfo.stride / (screenFormat.bitsPerPixel / 8);
 
 	drmModeFreeFB2(fb);
 	drmModeFreeCrtc(crtc);
@@ -174,6 +186,16 @@ void updateScreenFormat(void) {
 		screenFormat.redShift   = 16;
 		screenFormat.greenShift = 8;
 		screenFormat.blueShift  = 0;
+		screenFormat.redMax   = 8;
+		screenFormat.greenMax = 8;
+		screenFormat.blueMax  = 8;
+		break;
+
+	case DRM_FORMAT_ABGR8888:
+		screenFormat.bitsPerPixel = 32;
+		screenFormat.redShift   = 0;
+		screenFormat.greenShift = 8;
+		screenFormat.blueShift  = 16;
 		screenFormat.redMax   = 8;
 		screenFormat.greenMax = 8;
 		screenFormat.blueMax  = 8;
