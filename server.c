@@ -124,7 +124,7 @@ void initServer(int argc, char **argv) {
 	updateScreen(screenFormat.width, screenFormat.height, screenFormat.bitsPerPixel);
 }
 
-void sigHandler() {
+void sigHandler(int sig) {
 	update_loop = 0;
 }
 

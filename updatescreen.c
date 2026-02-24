@@ -3,7 +3,7 @@
 
 #include "updatescreen.h"
 
-unsigned int *vncBuffer;
+uint32_t *vncBuffer;
 
 rfbScreenInfoPtr vncScreen;
 
@@ -14,8 +14,8 @@ int updateScreen(int width, int height, int bpp) {
 	int idle = 1;
 
 	// Create buffers
-	uint32_t* fb = (uint32_t*)readFrameBuffer();
-	uint32_t* vb = (uint32_t*)vncBuffer;
+	uint32_t* fb = readFrameBuffer();
+	uint32_t* vb = vncBuffer;
 
 	// Set the pixel grid slip (depends on the resolution)
 	if (height < 540) {
@@ -40,7 +40,7 @@ int updateScreen(int width, int height, int bpp) {
 	for (y = 0; y < height; y++) {
 		// Set all offsets
 		vb_offset = y * width;
-		fb_offset = (y + screenInfo.yoffset) * screenInfo.xres_virtual + screenInfo.xoffset;
+		fb_offset = y * fb_pixels_per_line;
 		px_offset = (y * slip + shift) % step;
 
 		// Compare certain pixels in every line with an offset
@@ -67,7 +67,7 @@ int updateScreen(int width, int height, int bpp) {
 
 		for (y = min_y; y <= max_y; y++) {
 			vb_offset = y * width;
-			fb_offset = (y + screenInfo.yoffset) * screenInfo.xres_virtual + screenInfo.xoffset;
+			fb_offset = y * fb_pixels_per_line;
 			memcpy(vncBuffer + vb_offset, fb + fb_offset, width * bpp / CHAR_BIT);
 		}
 

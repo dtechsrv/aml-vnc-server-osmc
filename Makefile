@@ -1,11 +1,19 @@
-OBJS := updatescreen.c framebuffer.c input.c server.c
-LIBS := -lvncserver -lpng -ljpeg -lpthread -lssl -lcrypto -lz -lresolv -lm
-CFLAGS += -Wall
+CC ?= gcc
 
-all: aml-vnc
+PKG_CFLAGS := $(shell pkg-config --cflags libdrm)
+PKG_LIBS := $(shell pkg-config --libs libdrm)
 
-aml-vnc: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+CFLAGS += -Wall $(PKG_CFLAGS)
+LDLIBS += -lvncserver -lpng -ljpeg -lpthread -lssl -lcrypto -lz -lresolv -lm $(PKG_LIBS)
+
+OBJS := updatescreen.o framebuffer.o input.o server.o
+
+TARGET := aml-vnc
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 clean:
-	$(RM) -rf
+	$(RM) -f $(OBJS) $(TARGET)

@@ -4,21 +4,28 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
+#define DRM_DEVICE "/dev/dri/card0"
+
 #include "common.h"
 
-#include <limits.h>
+typedef struct {
+    int current_fb_id;
+    int width;
+    int height;
+    int stride;
+    int pixel_format;
+    int crtc_id;
+} drm_screeninfo;
 
-#define FB_DEVICE "/dev/fb0"
+extern drm_screeninfo screenInfo;
+extern int fb_pixels_per_line;
 
-extern struct fb_var_screeninfo screenInfo;
-
+void findActiveCrtc(void);
 void updateFrameBufferInfo(void);
-int roundUpToPageSize(int x);
-int initFrameBuffer(void);
-void closeFrameBuffer(void);
+void initFrameBuffer(void);
 int checkResolutionChange(void);
 void updateScreenFormat(void);
-struct fb_var_screeninfo getScreenInfo(void);
-unsigned int *readFrameBuffer(void);
+uint32_t *readFrameBuffer(void);
+void closeFrameBuffer(void);
 
 #endif
