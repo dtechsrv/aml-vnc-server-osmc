@@ -40,7 +40,7 @@ int updateScreen(int width, int height, int bpp) {
 	for (y = 0; y < height; y++) {
 		// Set all offsets
 		vb_offset = y * width;
-		fb_offset = y * fb_pixels_per_line;
+		fb_offset = y * (screenInfo.stride / (bpp / CHAR_BIT));
 		px_offset = (y * slip + shift) % step;
 
 		// Compare certain pixels in every line with an offset
@@ -67,7 +67,7 @@ int updateScreen(int width, int height, int bpp) {
 
 		for (y = min_y; y <= max_y; y++) {
 			vb_offset = y * width;
-			fb_offset = y * fb_pixels_per_line;
+			fb_offset = y * (screenInfo.stride / (bpp / CHAR_BIT));
 			memcpy(vncBuffer + vb_offset, fb + fb_offset, width * bpp / CHAR_BIT);
 		}
 

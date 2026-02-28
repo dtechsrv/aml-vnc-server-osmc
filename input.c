@@ -14,11 +14,11 @@ void initVirtualKeyboard(void) {
 
 	memset(down_keys, 0, sizeof(down_keys));
 
-	L("-- Initializing virtual keyboard device --\n");
+	LOG("-- Initializing virtual keyboard device --\n");
 
 	virt_kbd = open("/dev/uinput", O_WRONLY | O_NDELAY );
 	if (virt_kbd == 0) {
-		L(" Could not open '/dev/uinput'.\n");
+		LOG(" Could not open '/dev/uinput'.\n");
 		exit(-1);
 	}
 
@@ -38,10 +38,10 @@ void initVirtualKeyboard(void) {
 
 	retcode = (ioctl(virt_kbd, UI_DEV_CREATE));
 	if (retcode) {
-		L(" Error create virtual keyboard device.\n");
+		LOG(" Error create virtual keyboard device.\n");
 		exit(-1);
 	} else {
-		L(" The virtual keyboard device has been created.\n");
+		LOG(" The virtual keyboard device has been created.\n");
 	}
 }
 
@@ -49,11 +49,11 @@ void initVirtualPointer(void) {
 	struct uinput_user_dev uinp_dev;
 	int retcode;
 
-	L("-- Initializing virtual pointer device --\n");
+	LOG("-- Initializing virtual pointer device --\n");
 
 	virt_ptr = open("/dev/uinput", O_WRONLY | O_NDELAY );
 	if (virt_ptr == 0) {
-		L(" Could not open '/dev/uinput'.\n");
+		LOG(" Could not open '/dev/uinput'.\n");
 		exit(-1);
 	}
 
@@ -85,23 +85,23 @@ void initVirtualPointer(void) {
 
 	retcode = (ioctl(virt_ptr, UI_DEV_CREATE));
 	if (retcode) {
-		L(" Error create virtual pointer device.\n");
+		LOG(" Error create virtual pointer device.\n");
 		exit(-1);
 	} else {
-		L(" The virtual pointer device has been created.\n");
+		LOG(" The virtual pointer device has been created.\n");
 	}
 }
 
 void closeVirtualKeyboard(void) {
 	ioctl(virt_kbd, UI_DEV_DESTROY);
 	close(virt_kbd);
-	L(" The virtual keyboard device has been deleted.\n");
+	LOG(" The virtual keyboard device has been deleted.\n");
 }
 
 void closeVirtualPointer(void) {
 	ioctl(virt_ptr, UI_DEV_DESTROY);
 	close(virt_ptr);
-	L(" The virtual pointer device has been deleted.\n");
+	LOG(" The virtual pointer device has been deleted.\n");
 }
 
 void writeEvent(int udev, uint16_t type, uint16_t code, int value) {
@@ -115,7 +115,7 @@ void writeEvent(int udev, uint16_t type, uint16_t code, int value) {
 }
 
 int keySym2Scancode(rfbKeySym key) {
-	//L("DEBUG -> Keyboard keysym key: %04X.\n", key);
+	//LOG("DEBUG -> Keyboard keysym key: %04X.\n", key);
 
 	switch (key) {
 
@@ -296,7 +296,7 @@ void addKeyboardEvent(rfbBool down, rfbKeySym key, rfbClientPtr cl) {
 }
 
 void addPointerEvent(int buttonMask, int x, int y, rfbClientPtr cl) {
-	//L("DEBUG -> Last button mask: 0x%x, current button mask: 0x%x, cursor position: X=%d, Y=%d.\n", mouse_button, buttonMask, x, y);
+	//LOG("DEBUG -> Last button mask: 0x%x, current button mask: 0x%x, cursor position: X=%d, Y=%d.\n", mouse_button, buttonMask, x, y);
 
 	// Reset synchronization request
 	int need_sync = 0;

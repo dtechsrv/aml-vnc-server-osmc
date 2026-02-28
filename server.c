@@ -40,7 +40,7 @@ void extractReverseHostPort(char *str) {
 	/* copy in to host */
 	rhost = (char *) malloc(len);
 	if (! rhost) {
-		L(" Reverse connection: could not malloc string %d.\n", len);
+		LOG(" Reverse connection: could not malloc string %d.\n", len);
 		exit(-1);
 	}
 	snprintf(rhost, len, str);
@@ -63,7 +63,7 @@ void initReverseConnection(void) {
 	cl = rfbReverseConnection(vncScreen, rhost, rport);
 	if (cl == NULL) {
 		char *str = malloc(255 * sizeof(char));
-		L(" Couldn't connect to remote host: %s.\n",rhost);
+		LOG(" Couldn't connect to remote host: %s.\n",rhost);
 		free(str);
 	} else {
 		cl->onHold = FALSE;
@@ -72,13 +72,13 @@ void initReverseConnection(void) {
 }
 
 void initServer(int argc, char **argv) {
-	L("-- Initializing VNC server --\n");
-	L(" Screen resolution: %dx%d, bit depth: %d bpp.\n",
+	LOG("-- Initializing VNC server --\n");
+	LOG(" Screen resolution: %dx%d, bit depth: %d bpp.\n",
 		(int)screenFormat.width, (int)screenFormat.height, (int)screenFormat.bitsPerPixel);
-	L(" RGBA colormap: %d:%d:%d, length: %d:%d:%d.\n",
+	LOG(" RGBA colormap: %d:%d:%d, length: %d:%d:%d.\n",
 		screenFormat.redShift, screenFormat.greenShift, screenFormat.blueShift,
 		screenFormat.redMax, screenFormat.greenMax, screenFormat.blueMax);
-	L(" Screen buffer size: %d bytes.\n", (int)(screenFormat.size));
+	LOG(" Screen buffer size: %d bytes.\n", (int)(screenFormat.size));
 
 	vncBuffer = calloc(screenFormat.width * screenFormat.height, screenFormat.bitsPerPixel / CHAR_BIT);
 	assert(vncBuffer != NULL);
@@ -115,7 +115,7 @@ void initServer(int argc, char **argv) {
 
 	vncScreen->alwaysShared = TRUE;
 
-	L("-- Starting the server --\n");
+	LOG("-- Starting the server --\n");
 	rfbInitServer(vncScreen);
 
 	if (rhost)
@@ -129,7 +129,7 @@ void sigHandler(int sig) {
 }
 
 void printUsage(char *str) {
-	L("A framebuffer based VNC Server for Amlogic devices\n\n"
+	LOG("A framebuffer based VNC Server for Amlogic devices\n\n"
 		"Usage: %s [parameters]\n"
 		"-h\t\t- Print this help\n"
 		"-P <port>\t- Listening port\n"
@@ -153,10 +153,10 @@ int main(int argc, char **argv) {
 	if (getenv("VNC_PORT"))
 		VNC_PORT = atoi(getenv("VNC_PORT"));
 
-	L("AML-VNC Server v%d.%d.%d", MAIN_VERSION_MAJOR, MAIN_VERSION_MINOR, MAIN_VERSION_PATCH);
+	LOG("AML-VNC Server v%d.%d.%d", MAIN_VERSION_MAJOR, MAIN_VERSION_MINOR, MAIN_VERSION_PATCH);
 	if (MAIN_VERSION_BETA != 0)
-		L(" Beta %d", MAIN_VERSION_BETA);
-	L(" (Release date: %s)\n", MAIN_VERSION_DATE);
+		LOG(" Beta %d", MAIN_VERSION_BETA);
+	LOG(" (Release date: %s)\n", MAIN_VERSION_DATE);
 
 	if(argc > 1) {
 		int i = 1;
@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
 					time_last = time_now;
 				}
 			} else {
-				L(" Reinitialization started...\n");
+				LOG(" Reinitialization started...\n");
 				rfbShutdownServer(vncScreen, TRUE);
 				free(vncScreen->frameBuffer);
 				rfbScreenCleanup(vncScreen);
@@ -236,12 +236,12 @@ int main(int argc, char **argv) {
 	}
 
 	// VNC server shutdown
-	L("-- Shutting down the server --\n");
+	LOG("-- Shutting down the server --\n");
 	rfbShutdownServer(vncScreen, TRUE);
 	free(vncScreen->frameBuffer);
 	rfbScreenCleanup(vncScreen);
 
-	L("-- Cleaning up --\n");
+	LOG("-- Cleaning up --\n");
 	closeFrameBuffer();
 	closeVirtualKeyboard();
 	closeVirtualPointer();

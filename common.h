@@ -4,8 +4,6 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#ifndef __cplusplus
-
 #include <dirent.h>
 #include <signal.h>
 #include <stdio.h>
@@ -17,7 +15,7 @@
 #include <sys/ioctl.h>
 
 #include <sys/stat.h>
-#include <sys/sysmacros.h>             /* For makedev() */
+#include <sys/sysmacros.h>
 
 #include <fcntl.h>
 #include <linux/fb.h>
@@ -29,27 +27,7 @@
 
 #include <rfb/rfb.h>
 
-#define L(...) do{ printf(__VA_ARGS__); } while (0);
-#endif
-
-typedef struct _screenformat {
-	uint16_t width;
-	uint16_t height;
-
-	uint8_t bitsPerPixel;
-
-	uint16_t redMax;
-	uint16_t greenMax;
-	uint16_t blueMax;
-
-	uint8_t redShift;
-	uint8_t greenShift;
-	uint8_t blueShift;
-
-	uint32_t size;
-	uint32_t pad;
-} screenformat;
-
-extern screenformat screenFormat;
+#define BPP 32
+#define LOG(fmt, ...) do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 
 #endif

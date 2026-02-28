@@ -5,6 +5,7 @@
 #define INPUT_H
 
 #include "common.h"
+#include "framebuffer.h"
 
 #include <linux/input.h>
 #include <linux/uinput.h>
