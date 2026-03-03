@@ -20,19 +20,12 @@ int fbdev_initFrameBuffer(void) {
 		LOG(" The FBDEV framebuffer device has been attached.\n");
 	}
 
-	if (ioctl(fb_fd, FBIOGET_VSCREENINFO, &varInfo) != 0) {
-		LOG(" FBIOGET_VSCREENINFO failed.\n");
-		exit(EXIT_FAILURE);
-	}
+	fbdev_updateFrameBufferInfo();
 
 	if (varInfo.bits_per_pixel != BPP) {
 		LOG(" Unsupported BPP value: %u, only %d bit mode supported.\n", varInfo.bits_per_pixel, BPP);
 		exit(EXIT_FAILURE);
 	}
-
-	screenInfo.width	= varInfo.xres;
-	screenInfo.height	= varInfo.yres;
-	screenInfo.stride	= varInfo.xres_virtual * (varInfo.bits_per_pixel / CHAR_BIT);
 
 	fbSize = screenInfo.stride * screenInfo.height;
 
