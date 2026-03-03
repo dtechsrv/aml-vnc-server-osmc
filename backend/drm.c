@@ -85,6 +85,9 @@ int drm_initFrameBuffer(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	screenInfo.width = crtc->mode.hdisplay;
+	screenInfo.height = crtc->mode.vdisplay;
+
 	drmModeFB2 *buffer = drmModeGetFB2(drm_fd, crtc->buffer_id);
 	if (!buffer) {
 		LOG(" drmModeGetFB2 failed (buffer_id=%u).\n", crtc->buffer_id);
@@ -101,8 +104,6 @@ int drm_initFrameBuffer(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	screenInfo.width = buffer->width;
-	screenInfo.height = buffer->height;
 	screenInfo.stride = buffer->pitches[0];
 
 	pixelFormat = buffer->pixel_format;
@@ -152,6 +153,9 @@ void drm_updateFrameBufferInfo(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	screenInfo.width = crtc->mode.hdisplay;
+	screenInfo.height = crtc->mode.vdisplay;
+
 	if (crtc->buffer_id != bufferId) {
 		drmModeFB2 *buffer = drmModeGetFB2(drm_fd, crtc->buffer_id);
 		if (!buffer) {
@@ -162,8 +166,6 @@ void drm_updateFrameBufferInfo(void) {
 
 		bufferId = buffer->fb_id;
 
-		screenInfo.width = buffer->width;
-		screenInfo.height = buffer->height;
 		screenInfo.stride = buffer->pitches[0];
 
 		pixelFormat = buffer->pixel_format;
