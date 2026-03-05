@@ -115,7 +115,6 @@ int drm_initFrameBuffer(void) {
 	}
 
 	screenInfo.stride = buffer->pitches[0];
-
 	pixelFormat = buffer->pixel_format;
 
 	// DRM debug information
@@ -212,8 +211,7 @@ int drm_checkBufferStateChange(void) {
 	if (crtc->mode.hdisplay != screenFormat.width ||
 	    crtc->mode.vdisplay != screenFormat.height ||
 	    buffer->pitches[0] != screenInfo.stride ||
-	    buffer->pixel_format != pixelFormat ||
-	    buffer->fb_id != bufferId) {
+	    buffer->pixel_format != pixelFormat) {
 
 		LOG(" DRM framebuffer state changed.\n");
 
