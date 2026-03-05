@@ -212,8 +212,8 @@ int main(int argc, char **argv) {
 			standby = 10;
 		}
 
-		if (vncScreen->clientHead != NULL) {
-			if (!checkBufferStateChange()) {
+		if (!checkBufferStateChange()) {
+			if (vncScreen->clientHead != NULL) {
 				// Ignore events if they arrive before the next FPS expected
 				clock_gettime(CLOCK_MONOTONIC, &ts_now);
 				time_now = (uint64_t)ts_now.tv_sec * 1000000ULL + ts_now.tv_nsec / 1000ULL;
@@ -221,19 +221,19 @@ int main(int argc, char **argv) {
 					idle = updateScreen(screenFormat.width, screenFormat.height, screenFormat.bitsPerPixel);
 					time_last = time_now;
 				}
-			} else {
-				// Add a 1-second delay before reinit
-				sleep(1);
-				LOG(" Reinitialization started...\n");
-				rfbShutdownServer(vncScreen, TRUE);
-				free(vncScreen->frameBuffer);
-				rfbScreenCleanup(vncScreen);
-				closeVirtualPointer();
-				closeFrameBuffer();
-				initFrameBuffer();
-				initVirtualPointer();
-				initServer(argc, argv);
 			}
+		} else {
+			// Add a 1-second delay before reinit
+			sleep(1);
+			LOG(" Reinitialization started...\n");
+			rfbShutdownServer(vncScreen, TRUE);
+			free(vncScreen->frameBuffer);
+			rfbScreenCleanup(vncScreen);
+			closeVirtualPointer();
+			closeFrameBuffer();
+			initFrameBuffer();
+			initVirtualPointer();
+			initServer(argc, argv);
 		}
 	}
 
