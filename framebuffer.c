@@ -48,16 +48,16 @@ void closeFrameBuffer(void) {
 	}
 }
 
-int checkResolutionChange(void) {
+int checkBufferStateChange() {
 	switch (activeBackend) {
 
 #ifdef HAVE_LIBDRM
 	case BACKEND_DRM:
-		return drm_checkResolutionChange();
+		return drm_checkBufferStateChange();
 #endif
 
 	case BACKEND_FBDEV:
-		return fbdev_checkResolutionChange();
+		return fbdev_checkBufferStateChange();
 
 	case BACKEND_NONE:
 	default:

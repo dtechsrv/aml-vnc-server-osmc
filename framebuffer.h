@@ -46,7 +46,7 @@ extern screenformat screenFormat;
 
 int initFrameBuffer(void);
 void closeFrameBuffer(void);
-int checkResolutionChange(void);
+int checkBufferStateChange(void);
 uint32_t *readFrameBuffer(void);
 
 #endif

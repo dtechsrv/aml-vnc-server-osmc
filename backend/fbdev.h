@@ -12,7 +12,7 @@
 int fbdev_initFrameBuffer(void);
 void fbdev_closeFrameBuffer(void);
 void fbdev_updateFrameBufferInfo(void);
-int fbdev_checkResolutionChange(void);
+int fbdev_checkBufferStateChange(void);
 void fbdev_updateScreenFormat(void);
 uint32_t *fbdev_readFrameBuffer(void);
 

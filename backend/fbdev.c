@@ -3,8 +3,8 @@
 
 #include "fbdev.h"
 
-int fb_fd = -1;
-void *fb_mmap = MAP_FAILED;
+int fbFd = -1;
+void *fbBufferMap = MAP_FAILED;
 struct fb_var_screeninfo varInfo;
 
 int fbdev_initFrameBuffer(void) {
@@ -12,8 +12,8 @@ int fbdev_initFrameBuffer(void) {
 
 	LOG("-- Initializing FBDEV framebuffer device --\n");
 
-	fb_fd = open(FB_DEVICE, O_RDONLY);
-	if (fb_fd == -1) {
+	fbFd = open(FB_DEVICE, O_RDONLY);
+	if (fbFd == -1) {
 		LOG(" Cannot open FBDEV framebuffer device '%s'.\n", FB_DEVICE);
 		return -1; // Return to the selector
 	} else {
@@ -39,10 +39,10 @@ int fbdev_initFrameBuffer(void) {
 	LOG(" Stride: %u bytes, framebuffer size: %zu bytes.\n",
 		screenInfo.stride, fbSize);
 
-	fb_mmap = mmap(NULL, fbSize, PROT_READ, MAP_SHARED, fb_fd, 0);
+	fbBufferMap = mmap(NULL, fbSize, PROT_READ, MAP_SHARED, fbFd, 0);
 
-	if (fb_mmap == MAP_FAILED) {
-		LOG(" mmap of FBDEV framebuffer failed.\n");
+	if (fbBufferMap == MAP_FAILED) {
+		LOG(" Failed to map FBDEV framebuffer memory into userspace.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -50,22 +50,22 @@ int fbdev_initFrameBuffer(void) {
 }
 
 void fbdev_closeFrameBuffer(void) {
-	if (fb_mmap != MAP_FAILED)
-		munmap(fb_mmap, screenInfo.stride * screenInfo.height);
+	if (fbBufferMap != MAP_FAILED)
+		munmap(fbBufferMap, screenInfo.stride * screenInfo.height);
 
-	if (fb_fd != -1)
-		close(fb_fd);
+	if (fbFd != -1)
+		close(fbFd);
 
 	// Reset all framebuffer values
-	fb_mmap = MAP_FAILED;
-	fb_fd = -1;
+	fbBufferMap = MAP_FAILED;
+	fbFd = -1;
 
 	LOG(" The FBDEV framebuffer device has been detached.\n");
 }
 
 void fbdev_updateFrameBufferInfo(void) {
-	if (ioctl(fb_fd, FBIOGET_VSCREENINFO, &varInfo) != 0) {
-		LOG(" FBIOGET_VSCREENINFO failed.\n");
+	if (ioctl(fbFd, FBIOGET_VSCREENINFO, &varInfo) != 0) {
+		LOG(" Failed to query framebuffer screen information.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -74,7 +74,8 @@ void fbdev_updateFrameBufferInfo(void) {
 	screenInfo.stride	= varInfo.xres_virtual * (varInfo.bits_per_pixel / CHAR_BIT);
 }
 
-int fbdev_checkResolutionChange(void) {
+int fbdev_checkBufferStateChange(void) {
+	// In the case of FBDEV, the only hard trigger event is the resolution change
 	if ((varInfo.xres != screenFormat.width) || (varInfo.yres != screenFormat.height)) {
 		LOG("-- Screen resoulution changed from %ux%u to %ux%u --\n",
 			screenFormat.width, screenFormat.height,
@@ -101,5 +102,5 @@ void fbdev_updateScreenFormat(void) {
 
 uint32_t *fbdev_readFrameBuffer(void) {
 	fbdev_updateFrameBufferInfo();
-	return (uint32_t *)fb_mmap;
+	return (uint32_t *)fbBufferMap;
 }

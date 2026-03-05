@@ -3,11 +3,11 @@
 
 #include "drm.h"
 
-int drm_fd = -1;
+int drmFd = -1;
 int bufferId = -1;
 int crtcId = -1;
 int pixelFormat = 0;
-void *drm_mmap = MAP_FAILED;
+void *drmBufferMap = MAP_FAILED;
 
 void drm_findActiveCrtc(void) {
 	drmModeConnector *conn = NULL;
@@ -15,14 +15,14 @@ void drm_findActiveCrtc(void) {
 	drmModeRes *res = NULL;
 	int i;
 
-	res = drmModeGetResources(drm_fd);
+	res = drmModeGetResources(drmFd);
 	if (!res) {
-		LOG(" drmModeGetResources failed.\n");
+		LOG(" Failed to query DRM resources.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < res->count_connectors; i++) {
-		conn = drmModeGetConnector(drm_fd, res->connectors[i]);
+		conn = drmModeGetConnector(drmFd, res->connectors[i]);
 		if (conn && conn->connection == DRM_MODE_CONNECTED)
 			break;
 
@@ -36,14 +36,18 @@ void drm_findActiveCrtc(void) {
 		LOG(" No active DRM connector found.\n");
 		drmModeFreeResources(res);
 		exit(EXIT_FAILURE);
+	} else {
+		LOG(" Active DRM connector: %u.\n", conn->connector_id);
 	}
 
-	enc = drmModeGetEncoder(drm_fd, conn->encoder_id);
+	enc = drmModeGetEncoder(drmFd, conn->encoder_id);
 	if (!enc) {
-		LOG(" drmModeGetEncoder failed (encoder_id=%u).\n", conn->encoder_id);
+		LOG(" Failed to query encoder: %u.\n", conn->encoder_id);
 		drmModeFreeConnector(conn);
 		drmModeFreeResources(res);
 		exit(EXIT_FAILURE);
+	} else {
+		LOG(" Encoder in use: %u.\n", conn->encoder_id);
 	}
 
 	crtcId = enc->crtc_id;
@@ -54,22 +58,22 @@ void drm_findActiveCrtc(void) {
 }
 
 int drm_initFrameBuffer(void) {
-	int prime_fd;
+	int primeFd;
 
 	LOG("-- Initializing DRM framebuffer device --\n");
 
-	drm_fd = open(DRM_DEVICE, O_RDONLY);
-	if (drm_fd == -1) {
-		LOG(" Cannot open DRM framebuffer device.\n");
+	drmFd = open(DRM_DEVICE, O_RDONLY);
+	if (drmFd == -1) {
+		LOG(" Cannot open DRM framebuffer '%s'.\n", DRM_DEVICE);
 		return -1; // Return to the selector
 	} else {
-		LOG(" The DRM framebuffer device has been attached.\n");
+		LOG(" DRM framebuffer '%s' opened successfully.\n", DRM_DEVICE);
 	}
 
-	if (drmDropMaster(drm_fd) != 0) {
+	if (drmDropMaster(drmFd) != 0) {
 		if (errno != EPERM && errno != EINVAL) {
-			LOG(" drmDropMaster failed: %s\n", strerror(errno));
-			close(drm_fd);
+			LOG(" Failed to drop DRM master: %s\n", strerror(errno));
+			close(drmFd);
 			exit(EXIT_FAILURE);
 		} else {
 			LOG(" DRM master not owned, drop not required.\n");
@@ -79,29 +83,35 @@ int drm_initFrameBuffer(void) {
 	}
 
 	drm_findActiveCrtc();
-	drmModeCrtc *crtc = drmModeGetCrtc(drm_fd, crtcId);
+	drmModeCrtc *crtc = drmModeGetCrtc(drmFd, crtcId);
 	if (!crtc) {
-		LOG(" drmModeGetCrtc failed (crtc_id=%u).\n", crtcId);
+		LOG(" Failed to query CRTC: %u\n", crtcId);
 		exit(EXIT_FAILURE);
+	} else {
+		LOG(" Active CRTC: %u.\n", crtcId);
 	}
 
 	screenInfo.width = crtc->mode.hdisplay;
 	screenInfo.height = crtc->mode.vdisplay;
 
-	drmModeFB2 *buffer = drmModeGetFB2(drm_fd, crtc->buffer_id);
+	drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
-		LOG(" drmModeGetFB2 failed (buffer_id=%u).\n", crtc->buffer_id);
+		LOG(" Failed to query framebuffer object: %u.\n", crtc->buffer_id);
 		drmModeFreeCrtc(crtc);
 		exit(EXIT_FAILURE);
+	} else {
+		LOG(" Framebuffer object: %u.\n", crtc->buffer_id);
 	}
 
 	bufferId = buffer->fb_id;
 
-	if (drmPrimeHandleToFD(drm_fd, buffer->handles[0], DRM_CLOEXEC | DRM_RDWR, &prime_fd) != 0) {
-		LOG(" drmPrimeHandleToFD failed (handle=%u).\n", buffer->handles[0]);
+	if (drmPrimeHandleToFD(drmFd, buffer->handles[0], DRM_CLOEXEC | DRM_RDWR, &primeFd) != 0) {
+		LOG(" Failed to create PRIME fd from GEM handle: %u.\n", buffer->handles[0]);
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
 		exit(EXIT_FAILURE);
+	} else {
+		LOG(" PRIME fd created from GEM handle: %u.\n", buffer->handles[0]);
 	}
 
 	screenInfo.stride = buffer->pitches[0];
@@ -114,11 +124,11 @@ int drm_initFrameBuffer(void) {
 
 	drm_updateScreenFormat();
 
-	drm_mmap = mmap(NULL, screenInfo.stride * screenInfo.height, PROT_READ, MAP_SHARED, prime_fd, 0);
-	close(prime_fd);
+	drmBufferMap = mmap(NULL, screenInfo.stride * screenInfo.height, PROT_READ, MAP_SHARED, primeFd, 0);
+	close(primeFd);
 
-	if (drm_mmap == MAP_FAILED) {
-		LOG(" mmap of DRM framebuffer failed.\n");
+	if (drmBufferMap == MAP_FAILED) {
+		LOG(" Failed to map DRM framebuffer memory into userspace.\n");
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
 		exit(EXIT_FAILURE);
@@ -131,25 +141,25 @@ int drm_initFrameBuffer(void) {
 }
 
 void drm_closeFrameBuffer(void) {
-	if (drm_mmap != MAP_FAILED)
-		munmap(drm_mmap, screenInfo.stride * screenInfo.height);
+	if (drmBufferMap != MAP_FAILED)
+		munmap(drmBufferMap, screenInfo.stride * screenInfo.height);
 
-	if (drm_fd != -1)
-		close(drm_fd);
+	if (drmFd != -1)
+		close(drmFd);
 
 	// Reset all framebuffer values
-	drm_mmap = MAP_FAILED;
-	drm_fd = -1;
+	drmBufferMap = MAP_FAILED;
+	drmFd = -1;
 	bufferId = -1;
 	crtcId = -1;
 
-	LOG(" DRM device detached.\n");
+	LOG(" DRM framebuffer '%s' closed.\n", DRM_DEVICE);
 }
 
 void drm_updateFrameBufferInfo(void) {
-	drmModeCrtc *crtc = drmModeGetCrtc(drm_fd, crtcId);
+	drmModeCrtc *crtc = drmModeGetCrtc(drmFd, crtcId);
 	if (!crtc) {
-		LOG(" drmModeGetCrtc failed (crtc_id=%u). DRM state lost.\n", crtcId);
+		LOG(" Failed to query CRTC state: %u. DRM state lost.\n", crtcId);
 		exit(EXIT_FAILURE);
 	}
 
@@ -157,37 +167,65 @@ void drm_updateFrameBufferInfo(void) {
 	screenInfo.height = crtc->mode.vdisplay;
 
 	if (crtc->buffer_id != bufferId) {
-		drmModeFB2 *buffer = drmModeGetFB2(drm_fd, crtc->buffer_id);
+		drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 		if (!buffer) {
-			LOG(" drmModeGetFB2 failed (buffer_id=%u). DRM state lost.\n", crtc->buffer_id);
+			LOG(" Failed to query framebuffer object: %u. DRM state lost.\n", crtc->buffer_id);
 			drmModeFreeCrtc(crtc);
 			exit(EXIT_FAILURE);
 		}
 
-		bufferId = buffer->fb_id;
-
 		screenInfo.stride = buffer->pitches[0];
 
+		bufferId = buffer->fb_id;
 		pixelFormat = buffer->pixel_format;
 
 		drm_updateScreenFormat();
-
 		drmModeFreeFB2(buffer);
 	}
 
 	drmModeFreeCrtc(crtc);
 }
 
-int drm_checkResolutionChange(void) {
-	if ((screenInfo.width != screenFormat.width) || (screenInfo.height != screenFormat.height)) {
-		LOG("-- Screen resolution changed from %dx%d to %dx%d --\n",
-			screenFormat.width, screenFormat.height,
-			screenInfo.width, screenInfo.height);
-		drm_updateScreenFormat();
+int drm_checkBufferStateChange(void) {
+	drmModeCrtc *crtc;
+	drmModeFB2 *buffer;
+
+	crtc = drmModeGetCrtc(drmFd, crtcId);
+	if (!crtc) {
+		LOG(" Failed to query CRTC state: %u.\n", crtcId);
 		return 1;
-	} else {
-		return 0;
 	}
+
+	if (crtc->buffer_id == 0) {
+		LOG(" No active framebuffer.\n");
+		drmModeFreeCrtc(crtc);
+		return 1;
+	}
+
+	buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
+	if (!buffer) {
+		LOG(" Failed to query framebuffer object: %u.\n", crtc->buffer_id);
+		drmModeFreeCrtc(crtc);
+		return 1;
+	}
+
+	if (crtc->mode.hdisplay != screenFormat.width ||
+	    crtc->mode.vdisplay != screenFormat.height ||
+	    buffer->pitches[0] != screenInfo.stride ||
+	    buffer->pixel_format != pixelFormat ||
+	    buffer->fb_id != bufferId) {
+
+		LOG(" DRM framebuffer state changed.\n");
+
+		drmModeFreeFB2(buffer);
+		drmModeFreeCrtc(crtc);
+		return 1;
+	}
+
+	drmModeFreeFB2(buffer);
+	drmModeFreeCrtc(crtc);
+
+	return 0;
 }
 
 void drm_updateScreenFormat(void) {
@@ -226,5 +264,5 @@ void drm_updateScreenFormat(void) {
 
 uint32_t *drm_readFrameBuffer(void) {
 	drm_updateFrameBufferInfo();
-	return (uint32_t *)drm_mmap;
+	return (uint32_t *)drmBufferMap;
 }

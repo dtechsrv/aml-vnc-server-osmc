@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
 		}
 
 		if (vncScreen->clientHead != NULL) {
-			if (!checkResolutionChange()) {
+			if (!checkBufferStateChange()) {
 				// Ignore events if they arrive before the next FPS expected
 				clock_gettime(CLOCK_MONOTONIC, &ts_now);
 				time_now = (uint64_t)ts_now.tv_sec * 1000000ULL + ts_now.tv_nsec / 1000ULL;
@@ -222,6 +222,8 @@ int main(int argc, char **argv) {
 					time_last = time_now;
 				}
 			} else {
+				// Add a 1-second delay before reinit
+				sleep(1);
 				LOG(" Reinitialization started...\n");
 				rfbShutdownServer(vncScreen, TRUE);
 				free(vncScreen->frameBuffer);
