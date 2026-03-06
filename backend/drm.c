@@ -7,6 +7,7 @@ int drmFd = -1;
 int bufferId = -1;
 int crtcId = -1;
 int pixelFormat = 0;
+int modeClock = 0;
 void *drmBufferMap = MAP_FAILED;
 
 void drm_findActiveCrtc(void) {
@@ -58,7 +59,7 @@ void drm_findActiveCrtc(void) {
 }
 
 int drm_initFrameBuffer(void) {
-	int primeFd;
+	int primeFd, refreshRate;
 
 	LOG("-- Initializing DRM framebuffer device --\n");
 
@@ -93,6 +94,8 @@ int drm_initFrameBuffer(void) {
 
 	screenInfo.width = crtc->mode.hdisplay;
 	screenInfo.height = crtc->mode.vdisplay;
+	modeClock = crtc->mode.clock;
+	refreshRate = (crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal);
 
 	drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
@@ -118,7 +121,7 @@ int drm_initFrameBuffer(void) {
 	pixelFormat = buffer->pixel_format;
 
 	// DRM debug information
-	LOG(" Screen width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
+	LOG(" Mode detected: %dx%d @ %d Hz.\n", screenInfo.width, screenInfo.height, refreshRate);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&pixelFormat);
 
 	drm_updateScreenFormat();
@@ -210,6 +213,7 @@ int drm_checkBufferStateChange(void) {
 
 	if (crtc->mode.hdisplay != screenFormat.width ||
 	    crtc->mode.vdisplay != screenFormat.height ||
+	    crtc->mode.clock != modeClock ||
 	    buffer->pitches[0] != screenInfo.stride ||
 	    buffer->pixel_format != pixelFormat) {
 
