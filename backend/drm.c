@@ -92,8 +92,6 @@ int drm_initFrameBuffer(void) {
 		LOG(" Active CRTC: %u.\n", crtcId);
 	}
 
-	screenInfo.width = crtc->mode.hdisplay;
-	screenInfo.height = crtc->mode.vdisplay;
 	modeClock = crtc->mode.clock;
 	refreshRate = (crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal);
 
@@ -106,6 +104,10 @@ int drm_initFrameBuffer(void) {
 		LOG(" Framebuffer object: %u.\n", crtc->buffer_id);
 	}
 
+	screenInfo.width = buffer->width;
+	screenInfo.height = buffer->height;
+	screenInfo.stride = buffer->pitches[0];
+	pixelFormat = buffer->pixel_format;
 	bufferId = buffer->fb_id;
 
 	if (drmPrimeHandleToFD(drmFd, buffer->handles[0], DRM_CLOEXEC | DRM_RDWR, &primeFd) != 0) {
@@ -117,11 +119,9 @@ int drm_initFrameBuffer(void) {
 		LOG(" PRIME fd created from GEM handle: %u.\n", buffer->handles[0]);
 	}
 
-	screenInfo.stride = buffer->pitches[0];
-	pixelFormat = buffer->pixel_format;
-
 	// DRM debug information
-	LOG(" Mode detected: %dx%d @ %d Hz.\n", screenInfo.width, screenInfo.height, refreshRate);
+	LOG(" Real screen mode: %dx%d @ %d Hz.\n", crtc->mode.hdisplay, crtc->mode.vdisplay, refreshRate);
+	LOG(" Framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&pixelFormat);
 
 	drm_updateScreenFormat();
@@ -165,9 +165,6 @@ void drm_updateFrameBufferInfo(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	screenInfo.width = crtc->mode.hdisplay;
-	screenInfo.height = crtc->mode.vdisplay;
-
 	if (crtc->buffer_id != bufferId) {
 		drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 		if (!buffer) {
@@ -176,6 +173,8 @@ void drm_updateFrameBufferInfo(void) {
 			exit(EXIT_FAILURE);
 		}
 
+		screenInfo.width = buffer->width;
+		screenInfo.height = buffer->height;
 		screenInfo.stride = buffer->pitches[0];
 
 		bufferId = buffer->fb_id;
@@ -211,8 +210,8 @@ int drm_checkBufferStateChange(void) {
 		return 1;
 	}
 
-	if (crtc->mode.hdisplay != screenFormat.width ||
-	    crtc->mode.vdisplay != screenFormat.height ||
+	if (buffer->width != screenFormat.width ||
+	    buffer->height != screenFormat.height ||
 	    crtc->mode.clock != modeClock ||
 	    buffer->pitches[0] != screenInfo.stride ||
 	    buffer->pixel_format != pixelFormat) {
