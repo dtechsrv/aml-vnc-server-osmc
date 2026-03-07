@@ -3,8 +3,8 @@
 
 #include "framebuffer.h"
 
-screeninfo_t screenInfo;
-screenformat screenFormat;
+screen_info_t screenInfo;
+screen_format_t screenFormat;
 
 int activeBackend = BACKEND_NONE;
 

@@ -6,9 +6,9 @@
 int drmFd = -1;
 int bufferId = -1;
 int crtcId = -1;
-int pixelFormat = 0;
-int modeClock = 0;
 void *drmBufferMap = MAP_FAILED;
+
+drm_state_t drmState;
 
 void drm_findActiveCrtc(void) {
 	drmModeConnector *conn = NULL;
@@ -68,7 +68,7 @@ int drm_initFrameBuffer(void) {
 		LOG(" Cannot open DRM framebuffer '%s'.\n", DRM_DEVICE);
 		return -1; // Return to the selector
 	} else {
-		LOG(" DRM framebuffer '%s' opened successfully.\n", DRM_DEVICE);
+		LOG(" DRM framebuffer '%s' opened.\n", DRM_DEVICE);
 	}
 
 	if (drmDropMaster(drmFd) != 0) {
@@ -80,7 +80,7 @@ int drm_initFrameBuffer(void) {
 			LOG(" DRM master not owned, drop not required.\n");
 		}
 	} else {
-		LOG(" DRM master dropped successfully.\n");
+		LOG(" DRM master dropped.\n");
 	}
 
 	drm_findActiveCrtc();
@@ -92,7 +92,9 @@ int drm_initFrameBuffer(void) {
 		LOG(" Active CRTC: %u.\n", crtcId);
 	}
 
-	modeClock = crtc->mode.clock;
+	drmState.modeWidth = crtc->mode.hdisplay;
+	drmState.modeHeight = crtc->mode.vdisplay;
+	drmState.modeClock = crtc->mode.clock;
 	refreshRate = (crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal);
 
 	drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
@@ -107,8 +109,8 @@ int drm_initFrameBuffer(void) {
 	screenInfo.width = buffer->width;
 	screenInfo.height = buffer->height;
 	screenInfo.stride = buffer->pitches[0];
-	pixelFormat = buffer->pixel_format;
-	bufferId = buffer->fb_id;
+	drmState.pixelFormat = buffer->pixel_format;
+	drmState.fbId = buffer->fb_id;
 
 	if (drmPrimeHandleToFD(drmFd, buffer->handles[0], DRM_CLOEXEC | DRM_RDWR, &primeFd) != 0) {
 		LOG(" Failed to create PRIME fd from GEM handle: %u.\n", buffer->handles[0]);
@@ -122,7 +124,7 @@ int drm_initFrameBuffer(void) {
 	// DRM debug information
 	LOG(" Real screen mode: %dx%d @ %d Hz.\n", crtc->mode.hdisplay, crtc->mode.vdisplay, refreshRate);
 	LOG(" Framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
-	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&pixelFormat);
+	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
 
 	drm_updateScreenFormat();
 
@@ -152,7 +154,6 @@ void drm_closeFrameBuffer(void) {
 	// Reset all framebuffer values
 	drmBufferMap = MAP_FAILED;
 	drmFd = -1;
-	bufferId = -1;
 	crtcId = -1;
 
 	LOG(" DRM framebuffer '%s' closed.\n", DRM_DEVICE);
@@ -165,7 +166,7 @@ void drm_updateFrameBufferInfo(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (crtc->buffer_id != bufferId) {
+	if (crtc->buffer_id != drmState.fbId) {
 		drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 		if (!buffer) {
 			LOG(" Failed to query framebuffer object: %u. DRM state lost.\n", crtc->buffer_id);
@@ -177,8 +178,8 @@ void drm_updateFrameBufferInfo(void) {
 		screenInfo.height = buffer->height;
 		screenInfo.stride = buffer->pitches[0];
 
-		bufferId = buffer->fb_id;
-		pixelFormat = buffer->pixel_format;
+		drmState.fbId = buffer->fb_id;
+		drmState.pixelFormat = buffer->pixel_format;
 
 		drm_updateScreenFormat();
 		drmModeFreeFB2(buffer);
@@ -210,11 +211,12 @@ int drm_checkBufferStateChange(void) {
 		return 1;
 	}
 
-	if (buffer->width != screenFormat.width ||
-	    buffer->height != screenFormat.height ||
-	    crtc->mode.clock != modeClock ||
+	// Check for DRM framebuffer state changes
+	if (crtc->mode.hdisplay != drmState.modeWidth ||
+	    crtc->mode.vdisplay != drmState.modeHeight ||
+	    crtc->mode.clock != drmState.modeClock ||
 	    buffer->pitches[0] != screenInfo.stride ||
-	    buffer->pixel_format != pixelFormat) {
+	    buffer->pixel_format != drmState.pixelFormat) {
 
 		LOG(" DRM framebuffer state changed.\n");
 
@@ -234,7 +236,7 @@ void drm_updateScreenFormat(void) {
 	screenFormat.height = screenInfo.height;
 	screenFormat.size = screenInfo.width * screenInfo.height * 4;
 
-	switch (pixelFormat) {
+	switch (drmState.pixelFormat) {
 
 		case DRM_FORMAT_XRGB8888:
 		case DRM_FORMAT_ARGB8888:
@@ -258,7 +260,7 @@ void drm_updateScreenFormat(void) {
 			break;
 
 		default:
-			LOG(" Unsupported pixel format: 0x%x. Exiting.\n", pixelFormat);
+			LOG(" Unsupported pixel format: 0x%x. Exiting.\n", drmState.pixelFormat);
 			exit(EXIT_FAILURE);
 	}
 }

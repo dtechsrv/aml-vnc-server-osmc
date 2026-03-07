@@ -14,6 +14,17 @@
 
 #define DRM_DEVICE "/dev/dri/card0"
 
+typedef struct {
+    int fbId;
+    int stride;
+    int pixelFormat;
+    int modeClock;
+    int modeWidth;
+    int modeHeight;
+} drm_state_t;
+
+extern drm_state_t drmState;
+
 void drm_findActiveCrtc(void);
 int drm_initFrameBuffer(void);
 void drm_closeFrameBuffer(void);

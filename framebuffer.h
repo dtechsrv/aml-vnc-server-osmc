@@ -20,9 +20,9 @@ typedef struct {
 	uint32_t width;		// Screen width in pixels
 	uint32_t height;	// Screen height in pixels
 	uint32_t stride;	// Aligned value of bytes per line
-} screeninfo_t;
+} screen_info_t;
 
-extern screeninfo_t screenInfo;
+extern screen_info_t screenInfo;
 
 typedef struct _screenformat {
 	uint16_t width;
@@ -40,9 +40,9 @@ typedef struct _screenformat {
 
 	uint32_t size;
 	uint32_t pad;
-} screenformat;
+} screen_format_t;
 
-extern screenformat screenFormat;
+extern screen_format_t screenFormat;
 
 int initFrameBuffer(void);
 void closeFrameBuffer(void);
