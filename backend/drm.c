@@ -234,7 +234,7 @@ int drm_checkBufferStateChange(void) {
 void drm_updateScreenFormat(void) {
 	screenFormat.width = screenInfo.width;
 	screenFormat.height = screenInfo.height;
-	screenFormat.size = screenInfo.width * screenInfo.height * 4;
+	screenFormat.size = screenInfo.width * screenInfo.height * (BPP / CHAR_BIT);
 
 	switch (drmState.pixelFormat) {
 

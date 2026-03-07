@@ -4,26 +4,24 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <dirent.h>
+#include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <unistd.h>
-#include <sys/mman.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
-
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 
-#include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/input.h>
-
-#include <assert.h>
-#include <errno.h>
-#include <limits.h>
 
 #include <rfb/rfb.h>
 

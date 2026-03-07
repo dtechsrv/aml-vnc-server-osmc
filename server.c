@@ -7,20 +7,16 @@
 #include "input.h"
 #include "updatescreen.h"
 
-#include <time.h>
-#include <signal.h>
-
 int idle = 1;
 int standby = 0;
 int update_loop = 1;
 
-char VNC_SERVERNAME[256];
-char VNC_PASSWORD[256];
-int VNC_PORT = 5900;
-
-// Reverse connection
-char *rhost = NULL;
-int rport = 5500;
+// Connection variables
+char serverHostname[256] = "";
+char serverPassword[256] = "";
+int serverPort = 5900;
+char *reverseTarget = NULL;
+int reversePort = 5500;
 
 // Maximum FPS
 int target_fps = 20;
@@ -34,44 +30,43 @@ rfbNewClientHookPtr clientHook(rfbClientPtr cl) {
 	return RFB_CLIENT_ACCEPT;
 }
 
-void extractReverseHostPort(char *str) {
-	int len = sizeof(str);
-	char *p;
-	/* copy in to host */
-	rhost = (char *) malloc(len);
-	if (! rhost) {
-		LOG(" Reverse connection: could not malloc string %d.\n", len);
-		exit(-1);
-	}
-	snprintf(rhost, len, str);
-
-	/* Extract port, if any */
-	if ((p = strrchr(rhost, ':')) != NULL) {
-		rport = atoi(p + 1);
-		if (rport < 0) {
-			rport = -rport;
-		}
-		else if (rport < 20) {
-			rport = 5500 + rport;
-		}
-		*p = '\0';
-	}
-}
-
-void initReverseConnection(void) {
+void initReverseConnection(char *target) {
+	char *separator;
+	char host[256];
 	rfbClientPtr cl;
-	cl = rfbReverseConnection(vncScreen, rhost, rport);
-	if (cl == NULL) {
-		char *str = malloc(255 * sizeof(char));
-		LOG(" Couldn't connect to remote host: %s.\n",rhost);
-		free(str);
+
+	separator = strchr(target, ':');
+	if (separator) {
+		size_t len = separator - target;
+		if (len >= sizeof(host))
+			len = sizeof(host) - 1;
+		memcpy(host, target, len);
+		host[len] = '\0';
+		reversePort = atoi(separator + 1);
+		if (reversePort <= 0 || reversePort > 65535) {
+			LOG("Invalid reverse port '%s'.\n", separator + 1);
+			exit(EXIT_FAILURE);
+		}
 	} else {
-		cl->onHold = FALSE;
-		rfbStartOnHoldClient(cl);
+		snprintf(host, sizeof(host), "%s", target);
 	}
+
+	cl = rfbReverseConnection(vncScreen, host, reversePort);
+	if (!cl) {
+		LOG("Failed to connect to reverse host: %s:%d.\n", host, reversePort);
+		exit(EXIT_FAILURE);
+	}
+
+	cl->onHold = FALSE;
+	rfbStartOnHoldClient(cl);
 }
 
 void initServer(int argc, char **argv) {
+	if (serverPort <= 0 || serverPort > 65535) {
+		LOG("Invalid server port: '%d'.\n", serverPort);
+		exit(EXIT_FAILURE);
+	}
+
 	LOG("-- Initializing VNC server --\n");
 	LOG(" Screen resolution: %dx%d, bit depth: %d bpp.\n",
 		(int)screenFormat.width, (int)screenFormat.height, (int)screenFormat.bitsPerPixel);
@@ -83,20 +78,20 @@ void initServer(int argc, char **argv) {
 	vncBuffer = calloc(screenFormat.width * screenFormat.height, screenFormat.bitsPerPixel / CHAR_BIT);
 	assert(vncBuffer != NULL);
 
-	vncScreen = rfbGetScreen(&argc, argv, screenFormat.width, screenFormat.height, 0 /* not used */ , 3,  screenFormat.bitsPerPixel / CHAR_BIT);
+	vncScreen = rfbGetScreen(&argc, argv, screenFormat.width, screenFormat.height, 8, 3,  screenFormat.bitsPerPixel / CHAR_BIT);
 	assert(vncScreen != NULL);
 
-	vncScreen->desktopName = VNC_SERVERNAME;
+	vncScreen->desktopName = serverHostname;
 	vncScreen->frameBuffer = (char *)vncBuffer;
-	vncScreen->port = VNC_PORT;
-	vncScreen->ipv6port = VNC_PORT;
+	vncScreen->port = serverPort;
+	vncScreen->ipv6port = serverPort;
 	vncScreen->kbdAddEvent = addKeyboardEvent;
 	vncScreen->ptrAddEvent = addPointerEvent;
 	vncScreen->newClientHook = (rfbNewClientHookPtr)clientHook;
 
-	if (strcmp(VNC_PASSWORD, "") != 0) {
-		char **passwords = (char **)malloc(2 * sizeof(char **));
-		passwords[0] = VNC_PASSWORD;
+	if (strcmp(serverPassword, "") != 0) {
+		char **passwords = malloc(2 * sizeof(char *));
+		passwords[0] = serverPassword;
 		passwords[1] = NULL;
 		vncScreen->authPasswdData = passwords;
 		vncScreen->passwordCheck = rfbCheckPasswordByList;
@@ -118,8 +113,8 @@ void initServer(int argc, char **argv) {
 	LOG("-- Starting the server --\n");
 	rfbInitServer(vncScreen);
 
-	if (rhost)
-		initReverseConnection();
+	if (reverseTarget)
+		initReverseConnection(reverseTarget);
 
 	updateScreen(screenFormat.width, screenFormat.height, screenFormat.bitsPerPixel);
 }
@@ -129,13 +124,12 @@ void sigHandler(int sig) {
 }
 
 void printUsage(char *str) {
-	LOG("A framebuffer based VNC Server for Amlogic devices\n\n"
-		"Usage: %s [parameters]\n"
-		"-h\t\t- Print this help\n"
-		"-P <port>\t- Listening port\n"
-		"-n <name>\t- Server name\n"
-		"-p <password>\t- Password to access server\n"
-		"-R <host:port>\t- Host for reverse connection\n", str);
+	LOG("\nUsage: %s [options]\n"
+		"-h               - Print this help\n"
+		"-P <port>        - Listening port\n"
+		"-n <name>        - Server name\n"
+		"-p <password>    - Password to access server\n"
+		"-R <host[:port]> - Host for reverse connection (default port: 5500)\n", str);
 }
 
 int main(int argc, char **argv) {
@@ -143,15 +137,15 @@ int main(int argc, char **argv) {
 	uint64_t usec, time_limit, time_last, time_now;
 
 	// Set the default server name based on the hostname
-	gethostname(VNC_SERVERNAME, sizeof(VNC_SERVERNAME));
+	gethostname(serverHostname, sizeof(serverHostname));
 
 	// Preset values from environment variables (However, the values specified in the arguments have priority.)
 	if (getenv("VNC_SERVERNAME"))
-		snprintf(VNC_SERVERNAME, sizeof(VNC_SERVERNAME), getenv("VNC_SERVERNAME"));
+		snprintf(serverHostname, sizeof(serverHostname), "%s", getenv("VNC_SERVERNAME"));
 	if (getenv("VNC_PASSWORD"))
-		snprintf(VNC_PASSWORD, sizeof(VNC_PASSWORD), getenv("VNC_PASSWORD"));
+		snprintf(serverPassword, sizeof(serverPassword), "%s", getenv("VNC_PASSWORD"));
 	if (getenv("VNC_PORT"))
-		VNC_PORT = atoi(getenv("VNC_PORT"));
+		serverPort = atoi(getenv("VNC_PORT"));
 
 	LOG("AML-VNC Server v%d.%d.%d", MAIN_VERSION_MAJOR, MAIN_VERSION_MINOR, MAIN_VERSION_PATCH);
 	if (MAIN_VERSION_BETA != 0)
@@ -168,21 +162,41 @@ int main(int argc, char **argv) {
 						exit(0);
 						break;
 					case 'n':
-						i++;
-						snprintf(VNC_SERVERNAME, sizeof(VNC_SERVERNAME), argv[i]);
+						if (++i >= argc || argv[i][0] == '-') {
+							LOG("Missing argument for '%s'.\n", argv[i-1]);
+							printUsage(argv[0]);
+							exit(EXIT_FAILURE);
+						}
+						snprintf(serverHostname, sizeof(serverHostname), "%s", argv[i]);
 						break;
 					case 'p':
-						i++;
-						snprintf(VNC_PASSWORD, sizeof(VNC_PASSWORD), argv[i]);
+						if (++i >= argc || argv[i][0] == '-') {
+							LOG("Missing argument for '%s'.\n", argv[i-1]);
+							printUsage(argv[0]);
+							exit(EXIT_FAILURE);
+						}
+						snprintf(serverPassword, sizeof(serverPassword), "%s", argv[i]);
 						break;
 					case 'P':
-						i++;
-						VNC_PORT=atoi(argv[i]);
+						if (++i >= argc || argv[i][0] == '-') {
+							LOG("Missing argument for '%s'.\n", argv[i-1]);
+							printUsage(argv[0]);
+							exit(EXIT_FAILURE);
+						}
+						serverPort = atoi(argv[i]);
 						break;
 					case 'R':
-						i++;
-						extractReverseHostPort(argv[i]);
+						if (++i >= argc || argv[i][0] == '-') {
+							LOG("Missing argument for '%s'.\n", argv[i-1]);
+							printUsage(argv[0]);
+							exit(EXIT_FAILURE);
+						}
+						reverseTarget = argv[i];
 						break;
+					default:
+						LOG("Unknown option: %s\n", argv[i]);
+						printUsage(argv[0]);
+						exit(EXIT_FAILURE);
 				}
 			}
 		i++;
@@ -195,7 +209,6 @@ int main(int argc, char **argv) {
 	initVirtualKeyboard();
 	initVirtualPointer();
 	initServer(argc, argv);
-
 	signal(SIGINT, sigHandler);
 
 	// Set refresh cycle check values
@@ -223,14 +236,16 @@ int main(int argc, char **argv) {
 				}
 			}
 		} else {
-			// Add a 1-second delay before reinit
-			sleep(1);
 			LOG(" Reinitialization started...\n");
 			rfbShutdownServer(vncScreen, TRUE);
-			free(vncScreen->frameBuffer);
+			free(vncBuffer);
 			rfbScreenCleanup(vncScreen);
 			closeVirtualPointer();
 			closeFrameBuffer();
+
+			// Add a 1-second delay before reinit
+			sleep(1);
+
 			initFrameBuffer();
 			initVirtualPointer();
 			initServer(argc, argv);
