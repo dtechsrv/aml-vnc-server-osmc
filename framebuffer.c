@@ -7,6 +7,7 @@ screen_info_t screenInfo;
 screen_format_t screenFormat;
 
 int activeBackend = BACKEND_NONE;
+int reinitDelay = 0;
 
 int initFrameBuffer(void) {
 
@@ -14,6 +15,7 @@ int initFrameBuffer(void) {
 	// 1st probe: DRM
 	if (drm_initFrameBuffer() == 0) {
 		activeBackend = BACKEND_DRM;
+		reinitDelay = DRM_DELAY;
 		return BACKEND_DRM;
 	}
 #endif
@@ -21,6 +23,7 @@ int initFrameBuffer(void) {
 	// 2nd probe: FBDEV
 	if (fbdev_initFrameBuffer() == 0) {
 		activeBackend = BACKEND_FBDEV;
+		reinitDelay = FB_DELAY;
 		return BACKEND_FBDEV;
 	}
 

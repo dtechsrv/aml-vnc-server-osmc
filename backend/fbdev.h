@@ -8,6 +8,7 @@
 #include "framebuffer.h"
 
 #define FB_DEVICE "/dev/fb0"
+#define FB_DELAY 0
 
 int fbdev_initFrameBuffer(void);
 void fbdev_closeFrameBuffer(void);

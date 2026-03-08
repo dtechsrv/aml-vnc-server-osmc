@@ -13,6 +13,7 @@
 #include <drm_fourcc.h>
 
 #define DRM_DEVICE "/dev/dri/card0"
+#define DRM_DELAY 1000
 
 typedef struct {
     int fbId;

@@ -143,6 +143,9 @@ void serverStateChange(int state) {
 		closeVirtualPointer();
 	}
 
+	if (state == SERVER_REINIT && reinitDelay > 0)
+		usleep(reinitDelay * 1000);
+
 	if (state == SERVER_INIT || state == SERVER_REINIT) {
 		initFrameBuffer();
 		if (state == SERVER_INIT)
