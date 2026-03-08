@@ -16,13 +16,13 @@ int fbdev_initFrameBuffer(void) {
 		LOG(" Cannot open FBDEV framebuffer device '%s'.\n", FB_DEVICE);
 		return -1; // Return to the selector
 	} else {
-		LOG(" The FBDEV framebuffer device has been attached.\n");
+		LOG(" FBDEV framebuffer '%s' opened.\n", FB_DEVICE);
 	}
 
 	fbdev_updateFrameBufferInfo();
 
 	if (varInfo.bits_per_pixel != BPP) {
-		LOG(" Unsupported BPP value: %u, only %d bit mode supported.\n", varInfo.bits_per_pixel, BPP);
+		LOG(" Unsupported BPP value: '%u', only %d bit mode supported.\n", varInfo.bits_per_pixel, BPP);
 		exit(EXIT_FAILURE);
 	}
 
@@ -60,7 +60,7 @@ void fbdev_closeFrameBuffer(void) {
 	fbSize = 0;
 	fbBufferMap = MAP_FAILED;
 
-	LOG(" The FBDEV framebuffer device has been detached.\n");
+	LOG(" FBDEV framebuffer '%s' closed.\n", FB_DEVICE);
 }
 
 void fbdev_updateFrameBufferInfo(void) {
@@ -76,11 +76,11 @@ void fbdev_updateFrameBufferInfo(void) {
 
 int fbdev_checkBufferStateChange(void) {
 	// In the case of FBDEV, the only hard trigger event is the resolution change
+	fbdev_updateFrameBufferInfo();
 	if ((varInfo.xres != screenFormat.width) || (varInfo.yres != screenFormat.height)) {
-		LOG(" Screen resoulution changed from %ux%u to %ux%u.\n",
+		LOG(" Screen resolution changed from %ux%u to %ux%u.\n",
 			screenFormat.width, screenFormat.height,
 			varInfo.xres, varInfo.yres);
-		fbdev_updateScreenFormat();
 		return 1;
 	} else {
 		return 0;
