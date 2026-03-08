@@ -61,7 +61,7 @@ void initReverseConnection(char *target) {
 	rfbStartOnHoldClient(cl);
 }
 
-void initServer(int argc, char **argv) {
+void initServer(void) {
 	if (serverPort <= 0 || serverPort > 65535) {
 		LOG("Invalid server port: '%d'.\n", serverPort);
 		exit(EXIT_FAILURE);
@@ -78,7 +78,7 @@ void initServer(int argc, char **argv) {
 	vncBuffer = calloc(screenFormat.width * screenFormat.height, screenFormat.bitsPerPixel / CHAR_BIT);
 	assert(vncBuffer != NULL);
 
-	vncScreen = rfbGetScreen(&argc, argv, screenFormat.width, screenFormat.height, 8, 3,  screenFormat.bitsPerPixel / CHAR_BIT);
+	vncScreen = rfbGetScreen(NULL, NULL, screenFormat.width, screenFormat.height, 8, 3,  screenFormat.bitsPerPixel / CHAR_BIT);
 	assert(vncScreen != NULL);
 
 	vncScreen->desktopName = serverHostname;
@@ -130,6 +130,26 @@ void printUsage(char *str) {
 		"-n <name>        - Server name\n"
 		"-p <password>    - Password to access server\n"
 		"-R <host[:port]> - Host for reverse connection (default port: 5500)\n", str);
+}
+
+void serverStateChange(int state) {
+	if (state == SERVER_STOP || state == SERVER_REINIT) {
+		rfbShutdownServer(vncScreen, TRUE);
+		free(vncScreen->frameBuffer);
+		rfbScreenCleanup(vncScreen);
+		closeFrameBuffer();
+		if (state == SERVER_STOP)
+			closeVirtualKeyboard();
+		closeVirtualPointer();
+	}
+
+	if (state == SERVER_INIT || state == SERVER_REINIT) {
+		initFrameBuffer();
+		if (state == SERVER_INIT)
+			initVirtualKeyboard();
+		initVirtualPointer();
+		initServer();
+	}
 }
 
 int main(int argc, char **argv) {
@@ -205,10 +225,7 @@ int main(int argc, char **argv) {
 
 	// Start initialization
 	srand(time(NULL));
-	initFrameBuffer();
-	initVirtualKeyboard();
-	initVirtualPointer();
-	initServer(argc, argv);
+	serverStateChange(SERVER_INIT);
 	signal(SIGINT, sigHandler);
 
 	// Set refresh cycle check values
@@ -236,32 +253,13 @@ int main(int argc, char **argv) {
 				}
 			}
 		} else {
-			LOG(" Reinitialization started...\n");
-			rfbShutdownServer(vncScreen, TRUE);
-			free(vncBuffer);
-			rfbScreenCleanup(vncScreen);
-			closeVirtualPointer();
-			closeFrameBuffer();
-
-			// Add a 1-second delay before reinit
-			sleep(1);
-
-			initFrameBuffer();
-			initVirtualPointer();
-			initServer(argc, argv);
+			LOG("-- Server reinitialization started --\n");
+			serverStateChange(SERVER_REINIT);
 		}
 	}
 
-	// VNC server shutdown
 	LOG("-- Shutting down the server --\n");
-	rfbShutdownServer(vncScreen, TRUE);
-	free(vncScreen->frameBuffer);
-	rfbScreenCleanup(vncScreen);
-
-	LOG("-- Cleaning up --\n");
-	closeFrameBuffer();
-	closeVirtualKeyboard();
-	closeVirtualPointer();
+	serverStateChange(SERVER_STOP);
 
 	return 0;
 }

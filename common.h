@@ -26,6 +26,11 @@
 #include <rfb/rfb.h>
 
 #define BPP 32
+
+#define SERVER_INIT	0
+#define SERVER_STOP	1
+#define SERVER_REINIT	2
+
 #define LOG(fmt, ...) do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 
 #endif

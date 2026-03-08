@@ -77,7 +77,7 @@ void fbdev_updateFrameBufferInfo(void) {
 int fbdev_checkBufferStateChange(void) {
 	// In the case of FBDEV, the only hard trigger event is the resolution change
 	if ((varInfo.xres != screenFormat.width) || (varInfo.yres != screenFormat.height)) {
-		LOG("-- Screen resoulution changed from %ux%u to %ux%u --\n",
+		LOG(" Screen resoulution changed from %ux%u to %ux%u.\n",
 			screenFormat.width, screenFormat.height,
 			varInfo.xres, varInfo.yres);
 		fbdev_updateScreenFormat();
