@@ -4,12 +4,11 @@
 #include "fbdev.h"
 
 int fbFd = -1;
+size_t fbSize = 0;
 void *fbBufferMap = MAP_FAILED;
 struct fb_var_screeninfo varInfo;
 
 int fbdev_initFrameBuffer(void) {
-	size_t fbSize;
-
 	LOG("-- Initializing FBDEV framebuffer device --\n");
 
 	fbFd = open(FB_DEVICE, O_RDONLY);
@@ -27,7 +26,7 @@ int fbdev_initFrameBuffer(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	fbSize = screenInfo.stride * screenInfo.height;
+	fbSize = screenInfo.stride * varInfo.yres_virtual;
 
 	fbdev_updateScreenFormat();
 
@@ -51,14 +50,15 @@ int fbdev_initFrameBuffer(void) {
 
 void fbdev_closeFrameBuffer(void) {
 	if (fbBufferMap != MAP_FAILED)
-		munmap(fbBufferMap, screenInfo.stride * screenInfo.height);
+		munmap(fbBufferMap, fbSize);
 
 	if (fbFd != -1)
 		close(fbFd);
 
 	// Reset all framebuffer values
-	fbBufferMap = MAP_FAILED;
 	fbFd = -1;
+	fbSize = 0;
+	fbBufferMap = MAP_FAILED;
 
 	LOG(" The FBDEV framebuffer device has been detached.\n");
 }
