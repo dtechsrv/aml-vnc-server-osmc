@@ -7,10 +7,16 @@
 #include "common.h"
 #include "framebuffer.h"
 
-#include <drm/drm.h>
+#if __has_include(<libdrm/drm.h>)
+#  include <libdrm/drm.h>
+#  include <libdrm/drm_fourcc.h>
+#else
+#  include <drm/drm.h>
+#  include <drm/drm_fourcc.h>
+#endif
+
 #include <xf86drm.h>
 #include <xf86drmMode.h>
-#include <drm_fourcc.h>
 
 #define DRM_DEVICE "/dev/dri/card0"
 #define DRM_DELAY 1000
