@@ -8,7 +8,7 @@
 #define MAIN_VERSION_MINOR 4
 #define MAIN_VERSION_PATCH 0
 
-#define MAIN_VERSION_BETA 7
+#define MAIN_VERSION_BETA 8
 #define MAIN_VERSION_DATE "2026-03-12"
 
 #endif

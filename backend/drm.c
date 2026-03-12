@@ -191,17 +191,46 @@ void drm_updateFrameBufferInfo(void) {
 int drm_checkBufferStateChange(void) {
 	drmModeCrtc *crtc;
 	drmModeFB2 *buffer;
+	int softReinit = 0;
+	int fixedHeight;
 
+	// Reset DRM reinit delay
+	if (reinitDelay != DRM_DELAY)
+		reinitDelay = DRM_DELAY;
+
+	// Critical hard reinit triggers
 	crtc = drmModeGetCrtc(drmFd, crtcId);
 	if (!crtc) {
 		LOG(" Failed to query CRTC state: %u.\n", crtcId);
 		return 1;
 	}
 
+	// This is a standard framebuffer change indicator, if the buffer ID value is temporarily 0
 	if (crtc->buffer_id == 0) {
-		LOG(" No active framebuffer.\n");
 		drmModeFreeCrtc(crtc);
-		return 1;
+
+		// Set soft reinit trigger
+		softReinit = 1;
+
+		// Retry once after delay
+		LOG(" No active framebuffer, retrying after %d ms delay.\n", reinitDelay);
+		if (reinitDelay > 0) {
+			usleep(reinitDelay * 1000);
+			// This indicates that the delay was already in use, so it is no longer needed later
+			reinitDelay = 0;
+		}
+
+		crtc = drmModeGetCrtc(drmFd, crtcId);
+		if (!crtc) {
+			LOG(" Failed to query CRTC state: %u.\n", crtcId);
+			return 1;
+		}
+
+		if (crtc->buffer_id == 0) {
+			LOG(" No active framebuffer after retry either.\n");
+			drmModeFreeCrtc(crtc);
+			return 1;
+		}
 	}
 
 	buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
@@ -211,18 +240,43 @@ int drm_checkBufferStateChange(void) {
 		return 1;
 	}
 
-	// Check for DRM framebuffer state changes
-	if (crtc->mode.hdisplay != drmState.modeWidth ||
-	    crtc->mode.vdisplay != drmState.modeHeight ||
-	    crtc->mode.clock != drmState.modeClock ||
-	    buffer->pitches[0] != screenInfo.stride ||
-	    buffer->pixel_format != drmState.pixelFormat) {
+	// Fix transient DRM buffer height bug and set soft reinit trigger
+	fixedHeight = buffer->height;
+	if (buffer->width == screenInfo.width &&
+	    buffer->height == screenInfo.height * 2) {
+		fixedHeight = (buffer->height / 2);
+		softReinit = 1;
+	}
 
-		LOG(" DRM framebuffer state changed.\n");
+	// Optional hard reinit triggers: buffer width and height
+	if (buffer->width != screenInfo.width ||
+	    fixedHeight != screenInfo.height) {
 
+		LOG(" DRM framebuffer size changed from %ux%u to %ux%u.\n",
+			screenInfo.width, screenInfo.height,
+			buffer->width, fixedHeight);
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
 		return 1;
+	}
+
+	// Soft reinit triggers: real screen resolution and mode clock, pixel format
+	if (crtc->mode.hdisplay != drmState.modeWidth ||
+	    crtc->mode.vdisplay != drmState.modeHeight ||
+	    crtc->mode.clock != drmState.modeClock ||
+	    buffer->pixel_format != drmState.pixelFormat ||
+	    softReinit) {
+
+		LOG("-- DRM framebuffer state changed --\n");
+		drmModeFreeFB2(buffer);
+		drmModeFreeCrtc(crtc);
+
+		closeFrameBuffer();
+		if (reinitDelay > 0)
+			usleep(reinitDelay * 1000);
+		initFrameBuffer();
+
+		return 0;
 	}
 
 	drmModeFreeFB2(buffer);
