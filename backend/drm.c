@@ -4,7 +4,6 @@
 #include "drm.h"
 
 int drmFd = -1;
-int bufferId = -1;
 int crtcId = -1;
 void *drmBufferMap = MAP_FAILED;
 
@@ -37,8 +36,6 @@ void drm_findActiveCrtc(void) {
 		LOG(" No active DRM connector found.\n");
 		drmModeFreeResources(res);
 		exit(EXIT_FAILURE);
-	} else {
-		LOG(" Active DRM connector: %u.\n", conn->connector_id);
 	}
 
 	enc = drmModeGetEncoder(drmFd, conn->encoder_id);
@@ -47,8 +44,6 @@ void drm_findActiveCrtc(void) {
 		drmModeFreeConnector(conn);
 		drmModeFreeResources(res);
 		exit(EXIT_FAILURE);
-	} else {
-		LOG(" Encoder in use: %u.\n", conn->encoder_id);
 	}
 
 	crtcId = enc->crtc_id;
@@ -86,10 +81,8 @@ int drm_initFrameBuffer(void) {
 	drm_findActiveCrtc();
 	drmModeCrtc *crtc = drmModeGetCrtc(drmFd, crtcId);
 	if (!crtc) {
-		LOG(" Failed to query CRTC: %u\n", crtcId);
+		LOG(" Failed to query CRTC state: %u\n", crtcId);
 		exit(EXIT_FAILURE);
-	} else {
-		LOG(" Active CRTC: %u.\n", crtcId);
 	}
 
 	drmState.modeWidth = crtc->mode.hdisplay;
@@ -99,11 +92,9 @@ int drm_initFrameBuffer(void) {
 
 	drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
-		LOG(" Failed to query framebuffer object: %u.\n", crtc->buffer_id);
+		LOG(" Failed to query active framebuffer: %u.\n", crtc->buffer_id);
 		drmModeFreeCrtc(crtc);
 		exit(EXIT_FAILURE);
-	} else {
-		LOG(" Framebuffer object: %u.\n", crtc->buffer_id);
 	}
 
 	screenInfo.width = buffer->width;
@@ -117,11 +108,10 @@ int drm_initFrameBuffer(void) {
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
 		exit(EXIT_FAILURE);
-	} else {
-		LOG(" PRIME fd created from GEM handle: %u.\n", buffer->handles[0]);
 	}
 
 	// DRM debug information
+	LOG(" Active framebuffer: %d.\n", drmState.fbId);
 	LOG(" Real screen mode: %dx%d @ %d Hz.\n", crtc->mode.hdisplay, crtc->mode.vdisplay, refreshRate);
 	LOG(" Framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
@@ -169,7 +159,7 @@ void drm_updateFrameBufferInfo(void) {
 	if (crtc->buffer_id != drmState.fbId) {
 		drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 		if (!buffer) {
-			LOG(" Failed to query framebuffer object: %u. DRM state lost.\n", crtc->buffer_id);
+			LOG(" Failed to query active framebuffer: %u. DRM state lost.\n", crtc->buffer_id);
 			drmModeFreeCrtc(crtc);
 			exit(EXIT_FAILURE);
 		}
@@ -213,7 +203,7 @@ int drm_checkBufferStateChange(void) {
 		softReinit = 1;
 
 		// Retry once after delay
-		LOG(" No active framebuffer, retrying after %d ms delay.\n", reinitDelay);
+		LOG(" No active framebuffer, retrying with delay.\n");
 		if (reinitDelay > 0) {
 			usleep(reinitDelay * 1000);
 			// This indicates that the delay was already in use, so it is no longer needed later
@@ -235,7 +225,7 @@ int drm_checkBufferStateChange(void) {
 
 	buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
-		LOG(" Failed to query framebuffer object: %u.\n", crtc->buffer_id);
+		LOG(" Failed to query active framebuffer: %u.\n", crtc->buffer_id);
 		drmModeFreeCrtc(crtc);
 		return 1;
 	}

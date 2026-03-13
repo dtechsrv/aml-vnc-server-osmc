@@ -7,9 +7,10 @@
 #include "input.h"
 #include "updatescreen.h"
 
+// State variables
 int idle = 1;
 int standby = 0;
-int update_loop = 1;
+int updateLoop = 1;
 
 // Connection variables
 char serverHostname[256] = "";
@@ -20,7 +21,7 @@ int reversePort = 5500;
 int clientSession = 0;
 
 // Maximum FPS
-int target_fps = 20;
+int targetFps = 20;
 
 // Options
 int disablePointer = 0;
@@ -149,7 +150,7 @@ void initServer(void) {
 }
 
 void sigHandler(int sig) {
-	update_loop = 0;
+	updateLoop = 0;
 }
 
 void printUsage(char *str) {
@@ -273,11 +274,11 @@ int main(int argc, char **argv) {
 	signal(SIGINT, sigHandler);
 
 	// Set refresh cycle check values
-	time_limit = 1000000ULL / target_fps;
+	time_limit = 1000000ULL / targetFps;
 	time_last = 0;
 
 	// Start the update loop
-	while (update_loop) {
+	while (updateLoop) {
 		usec = (vncScreen->deferUpdateTime + standby) * 1000;
 		rfbProcessEvents(vncScreen, usec);
 		if (idle) {
