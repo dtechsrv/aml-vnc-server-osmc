@@ -101,6 +101,5 @@ void fbdev_updateScreenFormat(void) {
 }
 
 uint32_t *fbdev_readFrameBuffer(void) {
-	fbdev_updateFrameBufferInfo();
 	return (uint32_t *)fbBufferMap;
 }

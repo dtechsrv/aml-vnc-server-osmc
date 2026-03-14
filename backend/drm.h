@@ -28,6 +28,7 @@ typedef struct {
     int modeClock;
     int modeWidth;
     int modeHeight;
+    int multiBuffer;
 } drm_state_t;
 
 extern drm_state_t drmState;

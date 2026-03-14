@@ -97,8 +97,11 @@ int drm_initFrameBuffer(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	// Checking for multiple buffer usage
+	drmState.multiBuffer = buffer->height / (buffer->width * drmState.modeHeight / drmState.modeWidth);
+
 	screenInfo.width = buffer->width;
-	screenInfo.height = buffer->height;
+	screenInfo.height = buffer->height / drmState.multiBuffer;
 	screenInfo.stride = buffer->pitches[0];
 	drmState.pixelFormat = buffer->pixel_format;
 	drmState.fbId = buffer->fb_id;
@@ -112,13 +115,14 @@ int drm_initFrameBuffer(void) {
 
 	// DRM debug information
 	LOG(" Active framebuffer: %d.\n", drmState.fbId);
-	LOG(" Real screen mode: %dx%d @ %d Hz.\n", crtc->mode.hdisplay, crtc->mode.vdisplay, refreshRate);
+	LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
+	LOG(" Real screen mode: %dx%d @ %d Hz.\n", drmState.modeWidth, drmState.modeHeight, refreshRate);
 	LOG(" Framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
 
 	drm_updateScreenFormat();
 
-	drmBufferMap = mmap(NULL, screenInfo.stride * screenInfo.height, PROT_READ, MAP_SHARED, primeFd, 0);
+	drmBufferMap = mmap(NULL, screenInfo.stride * screenInfo.height * drmState.multiBuffer, PROT_READ, MAP_SHARED, primeFd, 0);
 	close(primeFd);
 
 	if (drmBufferMap == MAP_FAILED) {
@@ -136,7 +140,7 @@ int drm_initFrameBuffer(void) {
 
 void drm_closeFrameBuffer(void) {
 	if (drmBufferMap != MAP_FAILED)
-		munmap(drmBufferMap, screenInfo.stride * screenInfo.height);
+		munmap(drmBufferMap, screenInfo.stride * screenInfo.height * drmState.multiBuffer);
 
 	if (drmFd != -1)
 		close(drmFd);
@@ -147,35 +151,6 @@ void drm_closeFrameBuffer(void) {
 	crtcId = -1;
 
 	LOG(" DRM framebuffer '%s' closed.\n", DRM_DEVICE);
-}
-
-void drm_updateFrameBufferInfo(void) {
-	drmModeCrtc *crtc = drmModeGetCrtc(drmFd, crtcId);
-	if (!crtc) {
-		LOG(" Failed to query CRTC state: %u. DRM state lost.\n", crtcId);
-		exit(EXIT_FAILURE);
-	}
-
-	if (crtc->buffer_id != drmState.fbId) {
-		drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
-		if (!buffer) {
-			LOG(" Failed to query active framebuffer: %u. DRM state lost.\n", crtc->buffer_id);
-			drmModeFreeCrtc(crtc);
-			exit(EXIT_FAILURE);
-		}
-
-		screenInfo.width = buffer->width;
-		screenInfo.height = buffer->height;
-		screenInfo.stride = buffer->pitches[0];
-
-		drmState.fbId = buffer->fb_id;
-		drmState.pixelFormat = buffer->pixel_format;
-
-		drm_updateScreenFormat();
-		drmModeFreeFB2(buffer);
-	}
-
-	drmModeFreeCrtc(crtc);
 }
 
 int drm_checkBufferStateChange(void) {
@@ -231,10 +206,10 @@ int drm_checkBufferStateChange(void) {
 	}
 
 	// Fix transient DRM buffer height bug and set soft reinit trigger
-	fixedHeight = buffer->height;
+	fixedHeight = buffer->height / drmState.multiBuffer;
 	if (buffer->width == screenInfo.width &&
-	    buffer->height == screenInfo.height * 2) {
-		fixedHeight = (buffer->height / 2);
+	    fixedHeight == screenInfo.height * 2) {
+		fixedHeight = fixedHeight / 2;
 		softReinit = 1;
 	}
 
@@ -310,6 +285,5 @@ void drm_updateScreenFormat(void) {
 }
 
 uint32_t *drm_readFrameBuffer(void) {
-	drm_updateFrameBufferInfo();
 	return (uint32_t *)drmBufferMap;
 }
