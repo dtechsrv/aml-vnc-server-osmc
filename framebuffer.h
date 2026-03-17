@@ -16,6 +16,7 @@
 #define BACKEND_FBDEV	1
 #define BACKEND_DRM	2
 
+extern int activeBackend;
 extern int reinitDelay;
 
 typedef struct {
@@ -46,7 +47,7 @@ typedef struct _screenformat {
 
 extern screen_format_t screenFormat;
 
-int initFrameBuffer(void);
+void initFrameBuffer(void);
 void closeFrameBuffer(void);
 int checkBufferStateChange(void);
 uint32_t *readFrameBuffer(void);

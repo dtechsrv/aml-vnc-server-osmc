@@ -9,26 +9,34 @@ screen_format_t screenFormat;
 int activeBackend = BACKEND_NONE;
 int reinitDelay = 0;
 
-int initFrameBuffer(void) {
+void initFrameBuffer(void) {
 
 #ifdef HAVE_LIBDRM
 	// 1st probe: DRM
-	if (drm_initFrameBuffer() == 0) {
-		activeBackend = BACKEND_DRM;
-		reinitDelay = DRM_DELAY;
-		return BACKEND_DRM;
+	if (activeBackend == BACKEND_NONE ||
+	    activeBackend == BACKEND_DRM) {
+		if (drm_initFrameBuffer() == 0) {
+			reinitDelay = DRM_DELAY;
+			if (activeBackend == BACKEND_NONE)
+				activeBackend = BACKEND_DRM;
+		}
 	}
 #endif
 
 	// 2nd probe: FBDEV
-	if (fbdev_initFrameBuffer() == 0) {
-		activeBackend = BACKEND_FBDEV;
-		reinitDelay = FB_DELAY;
-		return BACKEND_FBDEV;
+	if (activeBackend == BACKEND_NONE ||
+	    activeBackend == BACKEND_FBDEV) {
+		if (fbdev_initFrameBuffer() == 0) {
+			reinitDelay = FB_DELAY;
+			if (activeBackend == BACKEND_NONE)
+				activeBackend = BACKEND_FBDEV;
+		}
 	}
 
-	LOG(" There is no backend device available.\n");
-	exit(EXIT_FAILURE);
+	if (activeBackend == BACKEND_NONE) {
+		LOG(" There is no backend device available.\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 void closeFrameBuffer(void) {

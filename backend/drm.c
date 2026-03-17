@@ -9,7 +9,7 @@ void *drmBufferMap = MAP_FAILED;
 
 drm_state_t drmState;
 
-void drm_findActiveCrtc(void) {
+int drm_findActiveCrtc(void) {
 	drmModeConnector *conn = NULL;
 	drmModeEncoder *enc = NULL;
 	drmModeRes *res = NULL;
@@ -35,7 +35,12 @@ void drm_findActiveCrtc(void) {
 	if (!conn) {
 		LOG(" No active DRM connector found.\n");
 		drmModeFreeResources(res);
-		exit(EXIT_FAILURE);
+		if (activeBackend == BACKEND_NONE) {
+			LOG(" Assuming headless mode, switch to the next backend.\n");
+			return -1;
+		} else {
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	enc = drmModeGetEncoder(drmFd, conn->encoder_id);
@@ -43,7 +48,12 @@ void drm_findActiveCrtc(void) {
 		LOG(" Failed to query encoder: %u.\n", conn->encoder_id);
 		drmModeFreeConnector(conn);
 		drmModeFreeResources(res);
-		exit(EXIT_FAILURE);
+		if (activeBackend == BACKEND_NONE) {
+			LOG(" Assuming headless mode, switch to the next backend.\n");
+			return -1;
+		} else {
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	crtcId = enc->crtc_id;
@@ -51,6 +61,8 @@ void drm_findActiveCrtc(void) {
 	drmModeFreeEncoder(enc);
 	drmModeFreeConnector(conn);
 	drmModeFreeResources(res);
+
+	return 0;
 }
 
 int drm_initFrameBuffer(void) {
@@ -78,7 +90,12 @@ int drm_initFrameBuffer(void) {
 		LOG(" DRM master dropped.\n");
 	}
 
-	drm_findActiveCrtc();
+	if (drm_findActiveCrtc() != 0) {
+		close(drmFd);
+		drmFd = -1;
+		return -1; // Return to the selector
+	}
+
 	drmModeCrtc *crtc = drmModeGetCrtc(drmFd, crtcId);
 	if (!crtc) {
 		LOG(" Failed to query CRTC state: %u\n", crtcId);
