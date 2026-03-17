@@ -10,7 +10,9 @@
 // State variables
 int idle = 1;
 int standby = 0;
-int updateLoop = 1;
+
+// Update loop signal flag
+volatile sig_atomic_t updateLoop = 1;
 
 // Connection variables
 char serverHostname[256] = "";
@@ -66,7 +68,7 @@ void initReverseConnection(char *target) {
 		host[len] = '\0';
 		reversePort = atoi(separator + 1);
 		if (reversePort <= 0 || reversePort > 65535) {
-			LOG("Invalid reverse port '%s'.\n", separator + 1);
+			LOG("Invalid reverse port: TCP #%s.\n", separator + 1);
 			exit(EXIT_FAILURE);
 		}
 	} else {
@@ -85,7 +87,7 @@ void initReverseConnection(char *target) {
 
 void initServer(void) {
 	if (serverPort <= 0 || serverPort > 65535) {
-		LOG("Invalid server port: '%d'.\n", serverPort);
+		LOG("Invalid server port: TCP #%d.\n", serverPort);
 		exit(EXIT_FAILURE);
 	}
 
@@ -270,8 +272,14 @@ int main(int argc, char **argv) {
 
 	// Start initialization
 	srand(time(NULL));
-	serverStateChange(SERVER_INIT);
 	signal(SIGINT, sigHandler);
+	signal(SIGTERM, sigHandler);
+	serverStateChange(SERVER_INIT);
+	if (vncScreen->listenSock < 0) {
+		LOG(" Server port already in use: TCP #%d.\n", serverPort);
+		serverStateChange(SERVER_STOP);
+		return -1;
+	}
 
 	// Set refresh cycle check values
 	time_limit = 1000000ULL / targetFps;
