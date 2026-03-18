@@ -132,9 +132,9 @@ int drm_initFrameBuffer(void) {
 
 	// DRM debug information
 	LOG(" Active framebuffer: %d.\n", drmState.fbId);
-	LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 	LOG(" Real screen mode: %dx%d @ %d Hz.\n", drmState.modeWidth, drmState.modeHeight, refreshRate);
-	LOG(" Framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
+	LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
+	LOG(" Used framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
 
 	drm_updateScreenFormat();
@@ -274,30 +274,30 @@ void drm_updateScreenFormat(void) {
 
 	switch (drmState.pixelFormat) {
 
-		case DRM_FORMAT_XRGB8888:
-		case DRM_FORMAT_ARGB8888:
-			screenFormat.bitsPerPixel	= 32;
-			screenFormat.redShift		= 16;
-			screenFormat.greenShift		= 8;
-			screenFormat.blueShift		= 0;
-			screenFormat.redMax		= 8;
-			screenFormat.greenMax		= 8;
-			screenFormat.blueMax		= 8;
-			break;
+	case DRM_FORMAT_XRGB8888:
+	case DRM_FORMAT_ARGB8888:
+		screenFormat.bitsPerPixel	= 32;
+		screenFormat.redShift		= 16;
+		screenFormat.greenShift		= 8;
+		screenFormat.blueShift		= 0;
+		screenFormat.redMax		= 8;
+		screenFormat.greenMax		= 8;
+		screenFormat.blueMax		= 8;
+		break;
 
-		case DRM_FORMAT_ABGR8888:
-			screenFormat.bitsPerPixel	= 32;
-			screenFormat.redShift		= 0;
-			screenFormat.greenShift		= 8;
-			screenFormat.blueShift		= 16;
-			screenFormat.redMax		= 8;
-			screenFormat.greenMax		= 8;
-			screenFormat.blueMax		= 8;
-			break;
+	case DRM_FORMAT_ABGR8888:
+		screenFormat.bitsPerPixel	= 32;
+		screenFormat.redShift		= 0;
+		screenFormat.greenShift		= 8;
+		screenFormat.blueShift		= 16;
+		screenFormat.redMax		= 8;
+		screenFormat.greenMax		= 8;
+		screenFormat.blueMax		= 8;
+		break;
 
-		default:
-			LOG(" Unsupported pixel format: 0x%x. Exiting.\n", drmState.pixelFormat);
-			exit(EXIT_FAILURE);
+	default:
+		LOG(" Unsupported pixel format: 0x%x. Exiting.\n", drmState.pixelFormat);
+		exit(EXIT_FAILURE);
 	}
 }
 

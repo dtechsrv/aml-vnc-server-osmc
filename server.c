@@ -192,8 +192,9 @@ void serverStateChange(int state) {
 }
 
 int main(int argc, char **argv) {
-	struct timespec ts_now;
-	uint64_t usec, time_limit, time_last, time_now;
+	struct timespec tsNow;
+	uint64_t uSec, timeLimit, timeLast, timeNow;
+	char header[128];
 	int i;
 
 	// Set the default server name based on the hostname
@@ -211,10 +212,11 @@ int main(int argc, char **argv) {
 	if (getenv("VNC_DEBUGLOG") && !strcasecmp(getenv("VNC_DEBUGLOG"), "true"))
 		printVncDebug = 1;
 
-	LOG("AML-VNC Server v%d.%d.%d", MAIN_VERSION_MAJOR, MAIN_VERSION_MINOR, MAIN_VERSION_PATCH);
+	sprintf(header, "AML-VNC Server v%d.%d.%d", MAIN_VERSION_MAJOR, MAIN_VERSION_MINOR, MAIN_VERSION_PATCH);
 	if (MAIN_VERSION_BETA != 0)
-		LOG(" Beta %d", MAIN_VERSION_BETA);
-	LOG(" (Release date: %s)\n", MAIN_VERSION_DATE);
+		sprintf(header + strlen(header), " Beta %d", MAIN_VERSION_BETA);
+	sprintf(header + strlen(header), " (Release date: %s)", MAIN_VERSION_DATE);
+	LOG("%s\n", header);
 
 	for (i = 1; i < argc; i++) {
 		if (*argv[i] == '-') {
@@ -276,19 +278,20 @@ int main(int argc, char **argv) {
 	signal(SIGTERM, sigHandler);
 	serverStateChange(SERVER_INIT);
 	if (vncScreen->listenSock < 0) {
-		LOG(" Server port already in use: TCP #%d.\n", serverPort);
+		if (!printVncDebug)
+			LOG(" Server port already in use: TCP #%d.\n", serverPort);
 		serverStateChange(SERVER_STOP);
 		return -1;
 	}
 
 	// Set refresh cycle check values
-	time_limit = 1000000ULL / targetFps;
-	time_last = 0;
+	timeLimit = 1000000ULL / targetFps;
+	timeLast = 0;
 
 	// Start the update loop
 	while (updateLoop) {
-		usec = (vncScreen->deferUpdateTime + standby) * 1000;
-		rfbProcessEvents(vncScreen, usec);
+		uSec = (vncScreen->deferUpdateTime + standby) * 1000;
+		rfbProcessEvents(vncScreen, uSec);
 		if (idle) {
 			standby = 100;
 		} else {
@@ -298,11 +301,11 @@ int main(int argc, char **argv) {
 		if (!checkBufferStateChange()) {
 			if (vncScreen->clientHead != NULL) {
 				// Ignore events if they arrive before the next FPS expected
-				clock_gettime(CLOCK_MONOTONIC, &ts_now);
-				time_now = (uint64_t)ts_now.tv_sec * 1000000ULL + ts_now.tv_nsec / 1000ULL;
-				if (time_now - time_last >= time_limit) {
+				clock_gettime(CLOCK_MONOTONIC, &tsNow);
+				timeNow = (uint64_t)tsNow.tv_sec * 1000000ULL + tsNow.tv_nsec / 1000ULL;
+				if (timeNow - timeLast >= timeLimit) {
 					idle = updateScreen(screenFormat.width, screenFormat.height, screenFormat.bitsPerPixel);
-					time_last = time_now;
+					timeLast = timeNow;
 				}
 			}
 		} else {
