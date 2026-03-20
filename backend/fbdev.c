@@ -69,9 +69,10 @@ void fbdev_updateFrameBufferInfo(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	screenInfo.width	= varInfo.xres;
-	screenInfo.height	= varInfo.yres;
-	screenInfo.stride	= varInfo.xres_virtual * (varInfo.bits_per_pixel / CHAR_BIT);
+	screenInfo.width = varInfo.xres;
+	screenInfo.height = varInfo.yres;
+	screenInfo.stride = varInfo.xres_virtual * (varInfo.bits_per_pixel / CHAR_BIT);
+	screenInfo.start = varInfo.yoffset;
 }
 
 int fbdev_checkBufferStateChange(void) {
@@ -88,16 +89,16 @@ int fbdev_checkBufferStateChange(void) {
 }
 
 void fbdev_updateScreenFormat(void) {
-	screenFormat.width = varInfo.xres;
-	screenFormat.height = varInfo.yres;
-	screenFormat.bitsPerPixel = varInfo.bits_per_pixel;
-	screenFormat.size = screenFormat.width * screenFormat.height * screenFormat.bitsPerPixel / CHAR_BIT;
-	screenFormat.redShift = varInfo.red.offset;
-	screenFormat.redMax = varInfo.red.length;
-	screenFormat.greenShift = varInfo.green.offset;
-	screenFormat.greenMax = varInfo.green.length;
-	screenFormat.blueShift = varInfo.blue.offset;
-	screenFormat.blueMax = varInfo.blue.length;
+	screenFormat.width		= varInfo.xres;
+	screenFormat.height		= varInfo.yres;
+	screenFormat.bitsPerPixel	= varInfo.bits_per_pixel;
+	screenFormat.size		= screenFormat.width * screenFormat.height * screenFormat.bitsPerPixel / CHAR_BIT;
+	screenFormat.redShift		= varInfo.red.offset;
+	screenFormat.redMax		= varInfo.red.length;
+	screenFormat.greenShift		= varInfo.green.offset;
+	screenFormat.greenMax		= varInfo.green.length;
+	screenFormat.blueShift		= varInfo.blue.offset;
+	screenFormat.blueMax		= varInfo.blue.length;
 }
 
 uint32_t *fbdev_readFrameBuffer(void) {

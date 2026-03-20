@@ -15,6 +15,6 @@ extern unsigned int *vncBuffer;
 
 extern rfbScreenInfoPtr vncScreen;
 
-int updateScreen(int width, int height, int bpp);
+int updateScreen(void);
 
 #endif

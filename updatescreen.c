@@ -7,7 +7,7 @@ uint32_t *vncBuffer;
 
 rfbScreenInfoPtr vncScreen;
 
-int updateScreen(int width, int height, int bpp) {
+int updateScreen(void) {
 	int x, y, slip, step, shift;
 	int vbOffset = 0, fbOffset = 0, pxOffset = 0;
 	int maxX = -1, maxY = -1, minX = 99999, minY = 99999;
@@ -18,13 +18,13 @@ int updateScreen(int width, int height, int bpp) {
 	uint32_t* vb = vncBuffer;
 
 	// Set the pixel grid slip (depends on the resolution)
-	if (height < 540) {
+	if (screenInfo.height < 540) {
 		slip = 2;
-	} else if (height >= 540 && height < 720) {
+	} else if (screenInfo.height >= 540 && screenInfo.height < 720) {
 		slip = 3;
-	} else if (height >= 720 && height < 1080) {
+	} else if (screenInfo.height >= 720 && screenInfo.height < 1080) {
 		slip = 4;
-	} else if (height >= 1080 && height < 1440) {
+	} else if (screenInfo.height >= 1080 && screenInfo.height < 1440) {
 		slip = 5;
 	} else {
 		slip = 6;
@@ -37,14 +37,14 @@ int updateScreen(int width, int height, int bpp) {
 	shift = rand() % step;
 
 	// Compare the buffers and find the differences in every line
-	for (y = 0; y < height; y++) {
+	for (y = 0; y < screenInfo.height; y++) {
 		// Set all offsets
-		vbOffset = y * width;
-		fbOffset = y * (screenInfo.stride / (bpp / CHAR_BIT));
+		vbOffset = y * screenInfo.width;
+		fbOffset = (screenInfo.start + y) * (screenInfo.stride / (BPP / CHAR_BIT));
 		pxOffset = (y * slip + shift) % step;
 
 		// Compare certain pixels in every line with an offset
-		for (x = pxOffset; x < width; x += step) {
+		for (x = pxOffset; x < screenInfo.width; x += step) {
 			if (vb[x + vbOffset] != fb[x + fbOffset]) {
 				if (idle) {
 					// The current line reduced by the slip value -> Set as the first different line
@@ -62,13 +62,13 @@ int updateScreen(int width, int height, int bpp) {
 	if (!idle) {
 		minX = 0;
 		minY = MAX(0, minY);
-		maxX = width - 1;
-		maxY = MIN(height - 1, maxY);
+		maxX = screenInfo.width - 1;
+		maxY = MIN(screenInfo.height - 1, maxY);
 
 		for (y = minY; y <= maxY; y++) {
-			vbOffset = y * width;
-			fbOffset = y * (screenInfo.stride / (bpp / CHAR_BIT));
-			memcpy(vncBuffer + vbOffset, fb + fbOffset, width * bpp / CHAR_BIT);
+			vbOffset = y * screenInfo.width;
+			fbOffset = (screenInfo.start + y) * (screenInfo.stride / (BPP / CHAR_BIT));
+			memcpy(vncBuffer + vbOffset, fb + fbOffset, screenInfo.width * BPP / CHAR_BIT);
 		}
 
 		rfbMarkRectAsModified(vncScreen, minX, minY, maxX, maxY);

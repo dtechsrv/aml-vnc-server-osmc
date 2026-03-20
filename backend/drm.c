@@ -120,6 +120,7 @@ int drm_initFrameBuffer(void) {
 	screenInfo.width = buffer->width;
 	screenInfo.height = buffer->height / drmState.multiBuffer;
 	screenInfo.stride = buffer->pitches[0];
+	screenInfo.start = 0;
 	drmState.pixelFormat = buffer->pixel_format;
 	drmState.fbId = buffer->fb_id;
 

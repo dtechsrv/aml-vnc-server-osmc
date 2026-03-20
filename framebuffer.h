@@ -23,6 +23,7 @@ typedef struct {
 	uint32_t width;		// Screen width in pixels
 	uint32_t height;	// Screen height in pixels
 	uint32_t stride;	// Aligned value of bytes per line
+	uint32_t start;		// Current frame vertical offset
 } screen_info_t;
 
 extern screen_info_t screenInfo;

@@ -148,7 +148,7 @@ void initServer(void) {
 	if (!printVncDebug)
 		LOG(" Debug output from libvncserver has been disabled.\n");
 
-	updateScreen(screenFormat.width, screenFormat.height, screenFormat.bitsPerPixel);
+	updateScreen();
 }
 
 void sigHandler(int sig) {
@@ -304,7 +304,7 @@ int main(int argc, char **argv) {
 				clock_gettime(CLOCK_MONOTONIC, &tsNow);
 				timeNow = (uint64_t)tsNow.tv_sec * 1000000ULL + tsNow.tv_nsec / 1000ULL;
 				if (timeNow - timeLast >= timeLimit) {
-					idle = updateScreen(screenFormat.width, screenFormat.height, screenFormat.bitsPerPixel);
+					idle = updateScreen();
 					timeLast = timeNow;
 				}
 			}
