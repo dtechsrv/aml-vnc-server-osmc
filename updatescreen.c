@@ -8,10 +8,18 @@ uint32_t *vncBuffer;
 rfbScreenInfoPtr vncScreen;
 
 int updateScreen(void) {
-	int x, y, slip, step, shift;
+	int x, y, xMin, yMin, xMax, yMax;
+	int slip, step, shift, idle;
 	int vbOffset = 0, fbOffset = 0, pxOffset = 0;
-	int maxX = -1, maxY = -1, minX = 99999, minY = 99999;
-	int idle = 1;
+
+	// Reset idle state
+	idle = 1;
+
+	// Bounding box init
+	xMin = 0;
+	xMax = screenInfo.width - 1;
+	yMin = screenInfo.height - 1;
+	yMax = 0;
 
 	// Create buffers
 	uint32_t* fb = readFrameBuffer();
@@ -19,15 +27,15 @@ int updateScreen(void) {
 
 	// Set the pixel grid slip (depends on the resolution)
 	if (screenInfo.height < 540) {
-		slip = 2;
-	} else if (screenInfo.height >= 540 && screenInfo.height < 720) {
-		slip = 3;
-	} else if (screenInfo.height >= 720 && screenInfo.height < 1080) {
-		slip = 4;
-	} else if (screenInfo.height >= 1080 && screenInfo.height < 1440) {
-		slip = 5;
+		slip = 2; // Height below 540 pixels
+	} else if (screenInfo.height < 720) {
+		slip = 3; // Height between 540 and 719 pixels
+	} else if (screenInfo.height < 1080) {
+		slip = 4; // Height between 720 and 1079 pixels
+	} else if (screenInfo.height < 1440) {
+		slip = 5; // Height between 1080 and 1439 pixels
 	} else {
-		slip = 6;
+		slip = 6; // Height from 1440 pixels and above
 	}
 
 	// Set the inline pixel step
@@ -48,11 +56,11 @@ int updateScreen(void) {
 			if (vb[x + vbOffset] != fb[x + fbOffset]) {
 				if (idle) {
 					// The current line reduced by the slip value -> Set as the first different line
-					minY = MIN(y - slip, minY);
+					yMin = MIN(y - slip, yMin);
 					idle = 0;
 				}
 				// The current line increased by the slip value -> Set as the last different line
-				maxY = MAX(y + slip, maxY);
+				yMax = MAX(y + slip, yMax);
 				break; // There is no need to examine this line anymore if it already has a difference
 			}
 		}
@@ -60,18 +68,16 @@ int updateScreen(void) {
 
 	// Fill the image buffer with the new content
 	if (!idle) {
-		minX = 0;
-		minY = MAX(0, minY);
-		maxX = screenInfo.width - 1;
-		maxY = MIN(screenInfo.height - 1, maxY);
+		yMin = MAX(0, yMin);
+		yMax = MIN(screenInfo.height - 1, yMax);
 
-		for (y = minY; y <= maxY; y++) {
+		for (y = yMin; y <= yMax; y++) {
 			vbOffset = y * screenInfo.width;
 			fbOffset = (screenInfo.start + y) * (screenInfo.stride / (BPP / CHAR_BIT));
 			memcpy(vncBuffer + vbOffset, fb + fbOffset, screenInfo.width * BPP / CHAR_BIT);
 		}
 
-		rfbMarkRectAsModified(vncScreen, minX, minY, maxX, maxY);
+		rfbMarkRectAsModified(vncScreen, xMin, yMin, xMax, yMax);
 	}
 
 	return idle;

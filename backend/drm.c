@@ -120,7 +120,7 @@ int drm_initFrameBuffer(void) {
 	screenInfo.width = buffer->width;
 	screenInfo.height = buffer->height / drmState.multiBuffer;
 	screenInfo.stride = buffer->pitches[0];
-	screenInfo.start = 0;
+	screenInfo.start = 0; // On DRM, there is no offset value to extract, so the start value will always be zero.
 	drmState.pixelFormat = buffer->pixel_format;
 	drmState.fbId = buffer->fb_id;
 
@@ -205,12 +205,12 @@ int drm_checkBufferStateChange(void) {
 
 		crtc = drmModeGetCrtc(drmFd, crtcId);
 		if (!crtc) {
-			LOG(" Failed to query CRTC state: %u.\n", crtcId);
+			LOG(" Failed to query CRTC state, DRM state lost.\n");
 			return 1;
 		}
 
 		if (crtc->buffer_id == 0) {
-			LOG(" No active framebuffer after retry either.\n");
+			LOG(" No active framebuffer after retry either, DRM state lost.\n");
 			drmModeFreeCrtc(crtc);
 			return 1;
 		}
@@ -218,7 +218,7 @@ int drm_checkBufferStateChange(void) {
 
 	buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
-		LOG(" Failed to query active framebuffer: %u.\n", crtc->buffer_id);
+		LOG(" Failed to query active framebuffer, DRM state lost.\n");
 		drmModeFreeCrtc(crtc);
 		return 1;
 	}
