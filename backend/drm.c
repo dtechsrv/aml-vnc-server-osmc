@@ -35,7 +35,7 @@ int drm_findActiveCrtc(void) {
 	if (!conn) {
 		LOG(" No active DRM connector found.\n");
 		drmModeFreeResources(res);
-		if (activeBackend == BACKEND_NONE) {
+		if (activeBackend == BACKEND_NONE && enableHeadless) {
 			LOG(" Assuming headless mode, switch to the next backend.\n");
 			return -1;
 		} else {
@@ -48,7 +48,7 @@ int drm_findActiveCrtc(void) {
 		LOG(" Failed to query encoder: %u.\n", conn->encoder_id);
 		drmModeFreeConnector(conn);
 		drmModeFreeResources(res);
-		if (activeBackend == BACKEND_NONE) {
+		if (activeBackend == BACKEND_NONE && enableHeadless) {
 			LOG(" Assuming headless mode, switch to the next backend.\n");
 			return -1;
 		} else {

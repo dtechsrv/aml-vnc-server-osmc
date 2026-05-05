@@ -11,8 +11,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define SQUARE(x) ((x)*(x))
 
-extern unsigned int *vncBuffer;
-
+extern uint32_t *vncBuffer;
 extern rfbScreenInfoPtr vncScreen;
 
 int updateScreen(void);

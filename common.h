@@ -33,4 +33,8 @@
 
 #define LOG(fmt, ...) do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 
+#ifdef HAVE_LIBDRM
+extern int enableHeadless;
+#endif
+
 #endif

@@ -4,7 +4,6 @@
 #include "updatescreen.h"
 
 uint32_t *vncBuffer;
-
 rfbScreenInfoPtr vncScreen;
 
 int updateScreen(void) {

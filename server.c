@@ -27,6 +27,9 @@ int targetFps = 20;
 
 // Options
 int disablePointer = 0;
+#ifdef HAVE_LIBDRM
+int enableHeadless = 0;
+#endif
 int printVncDebug = 0;
 
 void clientDisconnect(rfbClientPtr cl) {
@@ -163,6 +166,9 @@ void printUsage(char *str) {
 		"-p <password>    - Password to access server\n"
 		"-R <host[:port]> - Host for reverse connection (default port: 5500)\n"
 		"-m               - Mouseless mode (disable virtual pointer)\n"
+#ifdef HAVE_LIBDRM
+		"-H               - Enable headless mode (without display)\n"
+#endif
 		"-d               - Print libvncserver debug output\n", str);
 }
 
@@ -209,6 +215,10 @@ int main(int argc, char **argv) {
 		serverPort = atoi(getenv("VNC_PORT"));
 	if (getenv("VNC_NOMOUSE") && !strcasecmp(getenv("VNC_NOMOUSE"), "true"))
 		disablePointer = 1;
+#ifdef HAVE_LIBDRM
+	if (getenv("VNC_HEADLESS") && !strcasecmp(getenv("VNC_HEADLESS"), "true"))
+		enableHeadless = 1;
+#endif
 	if (getenv("VNC_DEBUGLOG") && !strcasecmp(getenv("VNC_DEBUGLOG"), "true"))
 		printVncDebug = 1;
 
@@ -261,6 +271,11 @@ int main(int argc, char **argv) {
 			case 'm':
 				disablePointer = 1;
 				break;
+#ifdef HAVE_LIBDRM
+			case 'H':
+				enableHeadless = 1;
+				break;
+#endif
 			case 'd':
 				printVncDebug = 1;
 				break;
