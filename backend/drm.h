@@ -35,8 +35,8 @@ extern drm_state_t drmState;
 
 int drm_findActiveCrtc(void);
 int drm_initFrameBuffer(void);
+void *drm_mapFrameBuffer(drmModeFB2 *buffer);
 void drm_closeFrameBuffer(void);
-void drm_updateFrameBufferInfo(void);
 int drm_checkBufferStateChange(void);
 void drm_updateScreenFormat(void);
 uint32_t *drm_readFrameBuffer(void);

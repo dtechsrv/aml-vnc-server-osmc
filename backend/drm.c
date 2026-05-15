@@ -5,8 +5,8 @@
 
 int drmFd = -1;
 int crtcId = -1;
-void *drmBufferMap = MAP_FAILED;
-
+int fbIdPri, fbIdSec;
+void *drmBufferMap, *drmBufferMapPri, *drmBufferMapSec;
 drm_state_t drmState;
 
 int drm_findActiveCrtc(void) {
@@ -66,7 +66,7 @@ int drm_findActiveCrtc(void) {
 }
 
 int drm_initFrameBuffer(void) {
-	int primeFd, refreshRate;
+	int refreshRate;
 
 	LOG("-- Initializing DRM framebuffer device --\n");
 
@@ -124,31 +124,28 @@ int drm_initFrameBuffer(void) {
 	drmState.pixelFormat = buffer->pixel_format;
 	drmState.fbId = buffer->fb_id;
 
-	if (drmPrimeHandleToFD(drmFd, buffer->handles[0], DRM_CLOEXEC | DRM_RDWR, &primeFd) != 0) {
-		LOG(" Failed to create PRIME fd from GEM handle: %u.\n", buffer->handles[0]);
-		drmModeFreeFB2(buffer);
-		drmModeFreeCrtc(crtc);
-		exit(EXIT_FAILURE);
-	}
+	fbIdPri = drmState.fbId;
+	fbIdSec = 0; // Set default value
 
 	// DRM debug information
-	LOG(" Active framebuffer: %d.\n", drmState.fbId);
+	LOG(" Primary framebuffer detected: %d.\n", fbIdPri);
 	LOG(" Real screen mode: %dx%d @ %d Hz.\n", drmState.modeWidth, drmState.modeHeight, refreshRate);
 	LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 	LOG(" Used framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
 
 	drm_updateScreenFormat();
+	drmBufferMapPri = drm_mapFrameBuffer(buffer);
 
-	drmBufferMap = mmap(NULL, screenInfo.stride * screenInfo.height * drmState.multiBuffer, PROT_READ, MAP_SHARED, primeFd, 0);
-	close(primeFd);
-
-	if (drmBufferMap == MAP_FAILED) {
-		LOG(" Failed to map DRM framebuffer memory into userspace.\n");
+	if (drmBufferMapPri == MAP_FAILED) {
+		LOG(" Failed to map primary DRM framebuffer memory into userspace.\n");
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
 		exit(EXIT_FAILURE);
 	}
+
+	// Set the primary framebuffer as active
+	drmBufferMap = drmBufferMapPri;
 
 	drmModeFreeFB2(buffer);
 	drmModeFreeCrtc(crtc);
@@ -156,15 +153,32 @@ int drm_initFrameBuffer(void) {
 	return 0;
 }
 
+void *drm_mapFrameBuffer(drmModeFB2 *buffer) {
+	int primeFd;
+	void *bufferMap = MAP_FAILED;
+
+	if (drmPrimeHandleToFD(drmFd, buffer->handles[0], DRM_CLOEXEC | DRM_RDWR, &primeFd) != 0) {
+		LOG(" Failed to create PRIME fd from GEM handle: %u.\n", buffer->handles[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	bufferMap = mmap(NULL, buffer->pitches[0] * buffer->height, PROT_READ, MAP_SHARED, primeFd, 0);
+	close(primeFd);
+
+	return bufferMap;
+}
+
 void drm_closeFrameBuffer(void) {
-	if (drmBufferMap != MAP_FAILED)
-		munmap(drmBufferMap, screenInfo.stride * screenInfo.height * drmState.multiBuffer);
+	if (drmBufferMapPri != MAP_FAILED)
+		munmap(drmBufferMapPri, screenInfo.stride * screenInfo.height * drmState.multiBuffer);
+
+	if (fbIdSec != 0 && drmBufferMapSec != MAP_FAILED)
+		munmap(drmBufferMapSec, screenInfo.stride * screenInfo.height * drmState.multiBuffer);
 
 	if (drmFd != -1)
 		close(drmFd);
 
 	// Reset all framebuffer values
-	drmBufferMap = MAP_FAILED;
 	drmFd = -1;
 	crtcId = -1;
 
@@ -175,7 +189,6 @@ int drm_checkBufferStateChange(void) {
 	drmModeCrtc *crtc;
 	drmModeFB2 *buffer;
 	int softReinit = 0;
-	int fixedHeight;
 
 	// Reset DRM reinit delay
 	if (reinitDelay != DRM_DELAY)
@@ -223,30 +236,52 @@ int drm_checkBufferStateChange(void) {
 		return 1;
 	}
 
-	// Fix transient DRM buffer height bug and set soft reinit trigger
-	fixedHeight = buffer->height / drmState.multiBuffer;
-	if (buffer->width == screenInfo.width &&
-	    fixedHeight == screenInfo.height * 2) {
-		fixedHeight = fixedHeight / 2;
-		softReinit = 1;
+	// Framebuffer ID change handling
+	if (buffer->fb_id != drmState.fbId) {
+		if (buffer->fb_id == fbIdPri) {
+			// Set the primary framebuffer as active
+			drmBufferMap = drmBufferMapPri;
+		} else if (buffer->fb_id == fbIdSec) {
+			// Set the secondary framebuffer as active
+			drmBufferMap = drmBufferMapSec;
+		} else if (fbIdSec == 0) {
+			fbIdSec = buffer->fb_id;
+			LOG(" Secondary framebuffer detected: %d.\n", fbIdSec);
+
+			// Init the secondary framebuffer
+			drmBufferMapSec = drm_mapFrameBuffer(buffer);
+
+			if (drmBufferMapSec == MAP_FAILED) {
+				LOG(" Failed to map secondary DRM framebuffer memory into userspace.\n");
+				drmModeFreeFB2(buffer);
+				drmModeFreeCrtc(crtc);
+				return 1;
+			}
+
+			// Set the secondary framebuffer as active
+			drmBufferMap = drmBufferMapSec;
+		} else {
+			softReinit = 1; // When a third framebuffer ID appears
+		}
+
+		// Set current framebuffer ID
+		drmState.fbId = buffer->fb_id;
 	}
 
-	// Optional hard reinit triggers: buffer width and height
-	if (buffer->width != screenInfo.width ||
-	    fixedHeight != screenInfo.height) {
+	// Hard reinit triggers: display resolution width or height
+	if (crtc->mode.hdisplay != drmState.modeWidth ||
+	    crtc->mode.vdisplay != drmState.modeHeight) {
 
-		LOG(" DRM framebuffer size changed from %ux%u to %ux%u.\n",
-			screenInfo.width, screenInfo.height,
-			buffer->width, fixedHeight);
+		LOG(" Screen resolution changed from %ux%u to %ux%u.\n",
+			drmState.modeWidth, drmState.modeHeight,
+			crtc->mode.hdisplay, crtc->mode.vdisplay);
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
 		return 1;
 	}
 
-	// Soft reinit triggers: real screen resolution and mode clock, pixel format
-	if (crtc->mode.hdisplay != drmState.modeWidth ||
-	    crtc->mode.vdisplay != drmState.modeHeight ||
-	    crtc->mode.clock != drmState.modeClock ||
+	// Soft reinit triggers: mode clock, pixel format or previously set soft reinit variable
+	if (crtc->mode.clock != drmState.modeClock ||
 	    buffer->pixel_format != drmState.pixelFormat ||
 	    softReinit) {
 
