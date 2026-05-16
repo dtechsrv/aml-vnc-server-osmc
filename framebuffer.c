@@ -13,8 +13,7 @@ void initFrameBuffer(void) {
 
 #ifdef HAVE_LIBDRM
 	// 1st probe: DRM
-	if (activeBackend == BACKEND_NONE ||
-	    activeBackend == BACKEND_DRM) {
+	if ((activeBackend == BACKEND_NONE || activeBackend == BACKEND_DRM) && !forceFbdevBackend) {
 		if (drm_initFrameBuffer() == 0) {
 			reinitDelay = DRM_DELAY;
 			if (activeBackend == BACKEND_NONE)
@@ -24,8 +23,7 @@ void initFrameBuffer(void) {
 #endif
 
 	// 2nd probe: FBDEV
-	if (activeBackend == BACKEND_NONE ||
-	    activeBackend == BACKEND_FBDEV) {
+	if (activeBackend == BACKEND_NONE || activeBackend == BACKEND_FBDEV) {
 		if (fbdev_initFrameBuffer() == 0) {
 			reinitDelay = FB_DELAY;
 			if (activeBackend == BACKEND_NONE)

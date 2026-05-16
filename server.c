@@ -28,7 +28,7 @@ int targetFps = 20;
 // Options
 int disablePointer = 0;
 #ifdef HAVE_LIBDRM
-int enableHeadless = 0;
+int forceFbdevBackend = 0;
 #endif
 int printVncDebug = 0;
 
@@ -167,7 +167,7 @@ void printUsage(char *str) {
 		"-R <host[:port]> - Host for reverse connection (default port: 5500)\n"
 		"-m               - Mouseless mode (disable virtual pointer)\n"
 #ifdef HAVE_LIBDRM
-		"-H               - Enable headless mode (without display)\n"
+		"-F               - Force FBDEV backend (disable DRM initialization)\n"
 #endif
 		"-d               - Print libvncserver debug output\n", str);
 }
@@ -216,8 +216,8 @@ int main(int argc, char **argv) {
 	if (getenv("VNC_NOMOUSE") && !strcasecmp(getenv("VNC_NOMOUSE"), "true"))
 		disablePointer = 1;
 #ifdef HAVE_LIBDRM
-	if (getenv("VNC_HEADLESS") && !strcasecmp(getenv("VNC_HEADLESS"), "true"))
-		enableHeadless = 1;
+	if (getenv("VNC_FORCEFBDEV") && !strcasecmp(getenv("VNC_FORCEFBDEV"), "true"))
+		forceFbdevBackend = 1;
 #endif
 	if (getenv("VNC_DEBUGLOG") && !strcasecmp(getenv("VNC_DEBUGLOG"), "true"))
 		printVncDebug = 1;
@@ -272,8 +272,8 @@ int main(int argc, char **argv) {
 				disablePointer = 1;
 				break;
 #ifdef HAVE_LIBDRM
-			case 'H':
-				enableHeadless = 1;
+			case 'F':
+				forceFbdevBackend = 1;
 				break;
 #endif
 			case 'd':

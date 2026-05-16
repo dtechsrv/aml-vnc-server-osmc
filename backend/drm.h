@@ -33,7 +33,7 @@ typedef struct {
 
 extern drm_state_t drmState;
 
-int drm_findActiveCrtc(void);
+void drm_findActiveCrtc(void);
 int drm_initFrameBuffer(void);
 void *drm_mapFrameBuffer(drmModeFB2 *buffer);
 void drm_closeFrameBuffer(void);
