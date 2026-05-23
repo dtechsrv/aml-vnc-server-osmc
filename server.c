@@ -167,7 +167,7 @@ void printUsage(char *str) {
 		"-R <host[:port]> - Host for reverse connection (default port: 5500)\n"
 		"-m               - Mouseless mode (disable virtual pointer)\n"
 #ifdef HAVE_LIBDRM
-		"-F               - Force FBDEV backend (disable DRM initialization)\n"
+		"-F               - Force FBDEV backend (ignore DRM initialization)\n"
 #endif
 		"-d               - Print libvncserver debug output\n", str);
 }

@@ -20,14 +20,15 @@
 
 #define DRM_DEVICE "/dev/dri/card0"
 #define DRM_DELAY 1000
+#define DRM_FBMAX 4
 
 typedef struct {
     int fbId;
     int stride;
     int pixelFormat;
-    int modeClock;
     int modeWidth;
     int modeHeight;
+    int refreshRate;
     int multiBuffer;
 } drm_state_t;
 
