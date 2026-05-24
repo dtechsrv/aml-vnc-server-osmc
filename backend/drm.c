@@ -226,10 +226,12 @@ int drm_checkBufferStateChange(void) {
 		softReinit = 1;
 	}
 
-	// Pixel format change
+	// Pixel format change - Hard reinit is required because libvncserver does not update color profile during active server session
 	if (buffer->pixel_format != drmState.pixelFormat) {
 		LOG(" Screen pixel format changed from %.4s to %.4s.\n", (char *)&drmState.pixelFormat, (char *)&buffer->pixel_format);
-		softReinit = 1;
+		drmModeFreeFB2(buffer);
+		drmModeFreeCrtc(crtc);
+		return 1;
 	}
 
 	// Framebuffer ID change
@@ -276,22 +278,19 @@ int drm_checkBufferStateChange(void) {
 		}
 	}
 
-	// Hard reinit triggers: display resolution width or height
+	// Display resolution width or height -> Hard reinit is required because most VNC clients do not handle screen size changes
 	if (crtc->mode.hdisplay != drmState.modeWidth ||
 	    crtc->mode.vdisplay != drmState.modeHeight) {
-
 		LOG(" Screen resolution changed from %ux%u to %ux%u.\n",
 			drmState.modeWidth, drmState.modeHeight,
 			crtc->mode.hdisplay, crtc->mode.vdisplay);
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);
-
 		return 1;
 	}
 
-	// Soft reinit trigger check
+	// Perform a soft reinit if trigger is set
 	if (softReinit) {
-
 		LOG("-- DRM framebuffer state changed --\n");
 		drmModeFreeFB2(buffer);
 		drmModeFreeCrtc(crtc);

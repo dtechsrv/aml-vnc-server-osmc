@@ -9,6 +9,6 @@
 #define MAIN_VERSION_PATCH 0
 
 #define MAIN_VERSION_BETA 13
-#define MAIN_VERSION_DATE "2026-05-23"
+#define MAIN_VERSION_DATE "2026-05-24"
 
 #endif
