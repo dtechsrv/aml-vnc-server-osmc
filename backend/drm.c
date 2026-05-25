@@ -4,9 +4,8 @@
 #include "drm.h"
 
 int drmFd = -1;
-int crtcId = -1;
 int fbIndex = -1;
-int fbId[DRM_FBMAX];
+uint32_t connId, crtcId, fbId[DRM_FBMAX];
 void *drmBufferMap, *drmBufferMapList[DRM_FBMAX];
 drm_state_t drmState;
 
@@ -39,6 +38,8 @@ void drm_findActiveCrtc(void) {
 		exit(EXIT_FAILURE);
 	}
 
+	connId = conn->connector_id;
+
 	enc = drmModeGetEncoder(drmFd, conn->encoder_id);
 	if (!enc) {
 		LOG(" Failed to query encoder: %u.\n", conn->encoder_id);
@@ -52,6 +53,33 @@ void drm_findActiveCrtc(void) {
 	drmModeFreeEncoder(enc);
 	drmModeFreeConnector(conn);
 	drmModeFreeResources(res);
+}
+
+double drm_getFracRate(void) {
+	drmModeObjectProperties *connProps;
+	drmModePropertyRes *propInfo;
+	double value = 1;
+	int i;
+
+	connProps = drmModeObjectGetProperties(drmFd, connId, DRM_MODE_OBJECT_CONNECTOR);
+	if (!connProps)
+		return value;
+
+	for (i = 0; i < connProps->count_props; i++) {
+		propInfo = drmModeGetProperty(drmFd, connProps->props[i]);
+		if (propInfo && !strcmp(propInfo->name, "FRAC_RATE_POLICY")) {
+			if (connProps->prop_values[i])
+				value = 1.001;
+			drmModeFreeProperty(propInfo);
+			break;
+		}
+
+		if (propInfo)
+			drmModeFreeProperty(propInfo);
+	}
+
+	drmModeFreeObjectProperties(connProps);
+	return value;
 }
 
 int drm_initFrameBuffer(void) {
@@ -86,7 +114,7 @@ int drm_initFrameBuffer(void) {
 
 	drmState.modeWidth = crtc->mode.hdisplay;
 	drmState.modeHeight = crtc->mode.vdisplay;
-	drmState.refreshRate = (crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal);
+	drmState.refreshRate = (double)(crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal * drm_getFracRate());
 
 	drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
@@ -110,8 +138,8 @@ int drm_initFrameBuffer(void) {
 	fbId[fbIndex] = drmState.fbId;
 
 	// DRM debug information
-	LOG(" DRM framebuffer detected (#%d): %d.\n", fbIndex + 1, fbId[fbIndex]);
-	LOG(" Real screen mode: %dx%d @ %d Hz.\n", drmState.modeWidth, drmState.modeHeight, drmState.refreshRate);
+	LOG(" DRM framebuffer detected (#%d): %u.\n", fbIndex + 1, fbId[fbIndex]);
+	LOG(" Real screen mode: %ux%u @ %.2f Hz.\n", drmState.modeWidth, drmState.modeHeight, drmState.refreshRate);
 	LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 	LOG(" Used framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
@@ -158,23 +186,21 @@ void drm_closeFrameBuffer(void) {
 			munmap(drmBufferMapList[i], screenInfo.stride * screenInfo.height * drmState.multiBuffer);
 	}
 
-	if (drmFd != -1)
-		close(drmFd);
+	LOG(" DRM framebuffer '%s' closed.\n", DRM_DEVICE);
+	close(drmFd);
 
 	// Reset all framebuffer values
 	drmFd = -1;
-	crtcId = -1;
 	fbIndex = -1;
-
-	LOG(" DRM framebuffer '%s' closed.\n", DRM_DEVICE);
 }
 
 int drm_checkBufferStateChange(void) {
 	drmModeCrtc *crtc;
 	drmModeFB2 *buffer;
+	double refreshRate;
 	int fbActive = -1;
 	int softReinit = 0;
-	int refreshRate, i;
+	int i;
 
 	// Reset DRM reinit delay
 	if (reinitDelay != DRM_DELAY)
@@ -220,9 +246,9 @@ int drm_checkBufferStateChange(void) {
 	}
 
 	// Refresh rate change
-	refreshRate = (crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal);
+	refreshRate = (double)(crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal * drm_getFracRate());
 	if (refreshRate != drmState.refreshRate) {
-		LOG(" Screen refresh rate changed from %d Hz to %d Hz.\n", drmState.refreshRate, refreshRate);
+		LOG(" Screen refresh rate changed from %.2f Hz to %.2f Hz.\n", drmState.refreshRate, refreshRate);
 		softReinit = 1;
 	}
 
@@ -255,7 +281,7 @@ int drm_checkBufferStateChange(void) {
 			if (fbIndex < DRM_FBMAX) {
 				fbActive = fbIndex;
 				fbId[fbActive] = buffer->fb_id;
-				LOG(" New DRM framebuffer detected (#%d): %d.\n", fbActive + 1, fbId[fbActive]);
+				LOG(" New DRM framebuffer detected (#%d): %u.\n", fbActive + 1, fbId[fbActive]);
 
 				// Init the new framebuffer
 				drmBufferMapList[fbActive] = drm_mapFrameBuffer(buffer);

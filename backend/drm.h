@@ -23,18 +23,19 @@
 #define DRM_FBMAX 4
 
 typedef struct {
-    int fbId;
-    int stride;
-    int pixelFormat;
-    int modeWidth;
-    int modeHeight;
-    int refreshRate;
+    uint32_t fbId;
+    uint32_t stride;
+    uint32_t pixelFormat;
+    uint32_t modeWidth;
+    uint32_t modeHeight;
+    double refreshRate;
     int multiBuffer;
 } drm_state_t;
 
 extern drm_state_t drmState;
 
 void drm_findActiveCrtc(void);
+double drm_getFracRate(void);
 int drm_initFrameBuffer(void);
 void *drm_mapFrameBuffer(drmModeFB2 *buffer);
 void drm_closeFrameBuffer(void);
