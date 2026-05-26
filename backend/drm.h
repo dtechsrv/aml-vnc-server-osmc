@@ -30,6 +30,7 @@ typedef struct {
     uint32_t modeHeight;
     double refreshRate;
     int multiBuffer;
+    int scanFactor;
 } drm_state_t;
 
 extern drm_state_t drmState;

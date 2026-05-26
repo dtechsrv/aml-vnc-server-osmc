@@ -114,7 +114,9 @@ int drm_initFrameBuffer(void) {
 
 	drmState.modeWidth = crtc->mode.hdisplay;
 	drmState.modeHeight = crtc->mode.vdisplay;
-	drmState.refreshRate = (double)(crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal * drm_getFracRate());
+	drmState.scanFactor = (crtc->mode.flags & DRM_MODE_FLAG_INTERLACE) ? 2 : 1;
+	drmState.refreshRate = (double)(crtc->mode.clock * 1000 * drmState.scanFactor) /
+		(crtc->mode.htotal * crtc->mode.vtotal * drm_getFracRate());
 
 	drmModeFB2 *buffer = drmModeGetFB2(drmFd, crtc->buffer_id);
 	if (!buffer) {
@@ -139,7 +141,8 @@ int drm_initFrameBuffer(void) {
 
 	// DRM debug information
 	LOG(" DRM framebuffer detected (#%d): %u.\n", fbIndex + 1, fbId[fbIndex]);
-	LOG(" Real screen mode: %ux%u @ %.2f Hz.\n", drmState.modeWidth, drmState.modeHeight, drmState.refreshRate);
+	LOG(" Real screen mode: %ux%u%c @ %.2f Hz.\n", drmState.modeWidth,
+		drmState.modeHeight, drmState.scanFactor == 2 ? 'i' : 'p', drmState.refreshRate);
 	LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 	LOG(" Used framebuffer width: %d px, height: %d px.\n", screenInfo.width, screenInfo.height);
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
@@ -200,7 +203,7 @@ int drm_checkBufferStateChange(void) {
 	double refreshRate;
 	int fbActive = -1;
 	int softReinit = 0;
-	int i;
+	int scanFactor, i;
 
 	// Reset DRM reinit delay
 	if (reinitDelay != DRM_DELAY)
@@ -245,8 +248,17 @@ int drm_checkBufferStateChange(void) {
 		return 1;
 	}
 
+	// Scan mode change
+	scanFactor = (crtc->mode.flags & DRM_MODE_FLAG_INTERLACE) ? 2 : 1;
+	if (scanFactor != drmState.scanFactor) {
+		LOG(" Scan mode changed from %s to %s.\n",
+			drmState.scanFactor == 2 ? "interlaced" : "progressive",
+			scanFactor == 2 ? "interlaced" : "progressive");
+			softReinit = 1;
+	}
+
 	// Refresh rate change
-	refreshRate = (double)(crtc->mode.clock * 1000) / (crtc->mode.htotal * crtc->mode.vtotal * drm_getFracRate());
+	refreshRate = (double)(crtc->mode.clock * 1000 * scanFactor) / (crtc->mode.htotal * crtc->mode.vtotal * drm_getFracRate());
 	if (refreshRate != drmState.refreshRate) {
 		LOG(" Screen refresh rate changed from %.2f Hz to %.2f Hz.\n", drmState.refreshRate, refreshRate);
 		softReinit = 1;
