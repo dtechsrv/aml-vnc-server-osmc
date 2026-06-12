@@ -37,4 +37,6 @@
 extern int forceFbdevBackend;
 #endif
 
+extern int suspend;
+
 #endif

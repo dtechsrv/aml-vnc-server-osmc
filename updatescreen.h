@@ -15,5 +15,6 @@ extern uint32_t *vncBuffer;
 extern rfbScreenInfoPtr vncScreen;
 
 int updateScreen(void);
+int clearScreen(void);
 
 #endif

@@ -5,6 +5,7 @@
 
 uint32_t *vncBuffer;
 rfbScreenInfoPtr vncScreen;
+int blank;
 
 int updateScreen(void) {
 	int x, y, xMin, yMin, xMax, yMax;
@@ -13,6 +14,9 @@ int updateScreen(void) {
 
 	// Reset idle state
 	idle = 1;
+
+	// Reset blank frame indicator
+	blank = 0;
 
 	// Bounding box init
 	xMin = 0;
@@ -80,4 +84,14 @@ int updateScreen(void) {
 	}
 
 	return idle;
+}
+
+int clearScreen(void) {
+	if (!blank) {
+		memset(vncBuffer, 0, screenFormat.size);
+		rfbMarkRectAsModified(vncScreen, 0, 0, screenInfo.width - 1, screenInfo.height - 1);
+		blank = 1;
+	}
+
+	return blank;
 }

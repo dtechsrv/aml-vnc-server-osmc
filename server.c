@@ -10,6 +10,7 @@
 // State variables
 int idle = 1;
 int standby = 0;
+int suspend = 0;
 
 // Update loop signal flag
 volatile sig_atomic_t updateLoop = 1;
@@ -150,8 +151,6 @@ void initServer(void) {
 
 	if (!printVncDebug)
 		LOG(" Debug output from libvncserver has been disabled.\n");
-
-	updateScreen();
 }
 
 void sigHandler(int sig) {
@@ -319,7 +318,13 @@ int main(int argc, char **argv) {
 				clock_gettime(CLOCK_MONOTONIC, &tsNow);
 				timeNow = (uint64_t)tsNow.tv_sec * 1000000ULL + tsNow.tv_nsec / 1000ULL;
 				if (timeNow - timeLast >= timeLimit) {
-					idle = updateScreen();
+					if (!suspend) {
+						// Perform a screen update and set idle from the return value
+						idle = updateScreen();
+					} else {
+						// Perform a screen cleanup and set idle from the return value
+						idle = clearScreen();
+					}
 					timeLast = timeNow;
 				}
 			}

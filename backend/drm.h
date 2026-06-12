@@ -19,7 +19,7 @@
 #include <xf86drmMode.h>
 
 #define DRM_DEVICE "/dev/dri/card0"
-#define DRM_DELAY 1000
+#define DRM_DELAY 500
 #define DRM_FBMAX 4
 
 typedef struct {
@@ -37,6 +37,7 @@ extern drm_state_t drmState;
 
 void drm_findActiveCrtc(void);
 double drm_getFracRate(void);
+uint32_t drm_findVideoPlane(void);
 int drm_initFrameBuffer(void);
 void *drm_mapFrameBuffer(drmModeFB2 *buffer);
 void drm_closeFrameBuffer(void);
