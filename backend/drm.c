@@ -162,6 +162,13 @@ int drm_initFrameBuffer(void) {
 			drmModeFreeCrtc(crtc);
 			exit(EXIT_FAILURE);
 		}
+	} else {
+		if (buffer->modifier != DRM_FORMAT_MOD_LINEAR) {
+			LOG(" Non-linear framebuffer modifier detected, exiting.\n");
+			drmModeFreeFB2(buffer);
+			drmModeFreeCrtc(crtc);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (!suspend) {
@@ -203,8 +210,8 @@ int drm_initFrameBuffer(void) {
 	LOG(" Stride: %d bytes, FourCC format: %.4s.\n", screenInfo.stride, (char *)&drmState.pixelFormat);
 
 	if (!suspend) {
-		LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 		LOG(" Initial DRM framebuffer detected (#%d): %u.\n", fbIndex + 1, fbId[fbIndex]);
+		LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 	}
 
 	drm_updateScreenFormat();
@@ -378,7 +385,12 @@ int drm_checkBufferStateChange(void) {
 				if (fbIndex < DRM_FBMAX) {
 					fbActive = fbIndex;
 					fbId[fbActive] = buffer->fb_id;
-					LOG(" New DRM framebuffer detected (#%d): %u.\n", fbActive + 1, fbId[fbActive]);
+
+					if (fbIndex == 0) {
+						LOG(" Initial DRM framebuffer detected (#%d): %u.\n", fbIndex + 1, fbId[fbIndex]);
+					} else {
+						LOG(" New DRM framebuffer detected (#%d): %u.\n", fbActive + 1, fbId[fbActive]);
+					}
 
 					// Set the value of multibuffer ratio if initialization is completed in suspended state
 					if (fbIndex == 0) {
@@ -420,7 +432,7 @@ int drm_checkBufferStateChange(void) {
 
 		// Buffer width and height -> A hard reinit is required because the same policy applies as for resolution
 		if (buffer->width != screenInfo.width ||
-		    buffer->height != screenInfo.height) {
+		    (buffer->height / drmState.multiBuffer) != screenInfo.height) {
 
 			LOG(" DRM framebuffer size changed from %ux%u to %ux%u.\n",
 				screenInfo.width, screenInfo.height,
@@ -479,7 +491,7 @@ void drm_updateScreenFormat(void) {
 		break;
 
 	default:
-		LOG(" Unsupported pixel format: 0x%x. Exiting.\n", drmState.pixelFormat);
+		LOG(" Unsupported pixel format: 0x%x, exiting.\n", drmState.pixelFormat);
 		exit(EXIT_FAILURE);
 	}
 }
