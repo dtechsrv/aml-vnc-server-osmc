@@ -33,10 +33,11 @@
 
 #define LOG(fmt, ...) do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 
+extern int idle;
+extern int suspend;
+
 #ifdef HAVE_LIBDRM
 extern int forceFbdevBackend;
 #endif
-
-extern int suspend;
 
 #endif

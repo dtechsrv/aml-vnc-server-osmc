@@ -7,9 +7,9 @@ uint32_t *vncBuffer;
 rfbScreenInfoPtr vncScreen;
 int blank;
 
-int updateScreen(void) {
+void updateScreen(void) {
 	int x, y, xMin, yMin, xMax, yMax;
-	int slip, step, shift, idle;
+	int slip, step, shift;
 	int vbOffset = 0, fbOffset = 0, pxOffset = 0;
 
 	// Reset idle state
@@ -82,16 +82,13 @@ int updateScreen(void) {
 
 		rfbMarkRectAsModified(vncScreen, xMin, yMin, xMax, yMax);
 	}
-
-	return idle;
 }
 
-int clearScreen(void) {
+void clearScreen(void) {
 	if (!blank) {
 		memset(vncBuffer, 0, screenFormat.size);
 		rfbMarkRectAsModified(vncScreen, 0, 0, screenInfo.width - 1, screenInfo.height - 1);
-		blank = 1;
+		blank = 1; // The buffer is filled with a blank frame only once
+		idle = 1;
 	}
-
-	return blank;
 }

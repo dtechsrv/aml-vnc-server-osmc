@@ -9,7 +9,6 @@
 
 // State variables
 int idle = 1;
-int standby = 0;
 int suspend = 0;
 
 // Update loop signal flag
@@ -198,7 +197,7 @@ void serverStateChange(int state) {
 
 int main(int argc, char **argv) {
 	struct timespec tsNow;
-	uint64_t uSec, timeLimit, timeLast, timeNow;
+	uint64_t timeLimit, timeLast, timeNow;
 	char header[128];
 	int i;
 
@@ -304,26 +303,22 @@ int main(int argc, char **argv) {
 
 	// Start the update loop
 	while (updateLoop) {
-		uSec = (vncScreen->deferUpdateTime + standby) * 1000;
-		rfbProcessEvents(vncScreen, uSec);
-		if (idle) {
-			standby = 100;
-		} else {
-			standby = 10;
-		}
+		rfbProcessEvents(vncScreen, vncScreen->deferUpdateTime * 1000);
 
 		if (!checkBufferStateChange()) {
 			if (vncScreen->clientHead != NULL) {
 				// Ignore events if they arrive before the next FPS expected
 				clock_gettime(CLOCK_MONOTONIC, &tsNow);
 				timeNow = (uint64_t)tsNow.tv_sec * 1000000ULL + tsNow.tv_nsec / 1000ULL;
-				if (timeNow - timeLast >= timeLimit) {
+
+				// When idle, it only updates every fourth frame
+				if (timeNow - timeLast >= (idle ? timeLimit * 4 : timeLimit)) {
 					if (!suspend) {
-						// Perform a screen update and set idle from the return value
-						idle = updateScreen();
+						// Perform a screen update
+						updateScreen();
 					} else {
-						// Perform a screen cleanup and set idle from the return value
-						idle = clearScreen();
+						// Perform a screen cleanup
+						clearScreen();
 					}
 					timeLast = timeNow;
 				}
