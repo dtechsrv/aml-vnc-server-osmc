@@ -42,7 +42,7 @@ int drm_initFrameBuffer(void);
 void *drm_mapFrameBuffer(drmModeFB2 *buffer);
 void drm_closeFrameBuffer(void);
 int drm_checkBufferStateChange(void);
-void drm_updateScreenFormat(void);
+int drm_updateScreenFormat(void);
 uint32_t *drm_readFrameBuffer(void);
 
 #endif

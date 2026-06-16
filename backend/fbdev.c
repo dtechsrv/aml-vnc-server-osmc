@@ -15,8 +15,6 @@ int fbdev_initFrameBuffer(void) {
 	if (fbFd == -1) {
 		LOG(" Cannot open FBDEV framebuffer device '%s'.\n", FB_DEVICE);
 		return -1; // Return to the selector
-	} else {
-		LOG(" FBDEV framebuffer '%s' opened.\n", FB_DEVICE);
 	}
 
 	fbdev_updateFrameBufferInfo();
@@ -59,8 +57,6 @@ void fbdev_closeFrameBuffer(void) {
 	fbFd = -1;
 	fbSize = 0;
 	fbBufferMap = MAP_FAILED;
-
-	LOG(" FBDEV framebuffer '%s' closed.\n", FB_DEVICE);
 }
 
 void fbdev_updateFrameBufferInfo(void) {

@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
 
 		if (!checkBufferStateChange()) {
 			if (vncScreen->clientHead != NULL) {
-				// Ignore events if they arrive before the next FPS expected
+				// Ignore events if they arrive before the next frame expected
 				clock_gettime(CLOCK_MONOTONIC, &tsNow);
 				timeNow = (uint64_t)tsNow.tv_sec * 1000000ULL + tsNow.tv_nsec / 1000ULL;
 

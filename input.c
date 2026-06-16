@@ -19,7 +19,7 @@ void initVirtualKeyboard(void) {
 	virtKbd = open("/dev/uinput", O_WRONLY | O_NDELAY );
 	if (virtKbd == 0) {
 		LOG(" Could not open '/dev/uinput'.\n");
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
 
 	memset(&uinpDev, 0, sizeof(uinpDev));
@@ -39,7 +39,7 @@ void initVirtualKeyboard(void) {
 	retcode = (ioctl(virtKbd, UI_DEV_CREATE));
 	if (retcode) {
 		LOG(" Error create virtual keyboard device.\n");
-		exit(-1);
+		exit(EXIT_FAILURE);
 	} else {
 		LOG(" The virtual keyboard device has been created.\n");
 	}
@@ -54,7 +54,7 @@ void initVirtualPointer(void) {
 	virtPtr = open("/dev/uinput", O_WRONLY | O_NDELAY );
 	if (virtPtr == 0) {
 		LOG(" Could not open '/dev/uinput'.\n");
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
 
 	memset(&uinpDev, 0, sizeof(uinpDev));
@@ -86,7 +86,7 @@ void initVirtualPointer(void) {
 	retcode = (ioctl(virtPtr, UI_DEV_CREATE));
 	if (retcode) {
 		LOG(" Error create virtual pointer device.\n");
-		exit(-1);
+		exit(EXIT_FAILURE);
 	} else {
 		LOG(" The virtual pointer device has been created.\n");
 	}

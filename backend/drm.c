@@ -123,8 +123,6 @@ int drm_initFrameBuffer(void) {
 		} else {
 			exit(EXIT_FAILURE);
 		}
-	} else {
-		LOG(" DRM framebuffer '%s' opened.\n", DRM_DEVICE);
 	}
 
 	if (drmDropMaster(drmFd) != 0) {
@@ -132,11 +130,7 @@ int drm_initFrameBuffer(void) {
 			LOG(" Failed to drop DRM master: %s\n", strerror(errno));
 			close(drmFd);
 			exit(EXIT_FAILURE);
-		} else {
-			LOG(" DRM master not owned, drop not required.\n");
 		}
-	} else {
-		LOG(" DRM master dropped.\n");
 	}
 
 	drm_findActiveCrtc();
@@ -203,6 +197,14 @@ int drm_initFrameBuffer(void) {
 		drmState.fbId = 0;
 	}
 
+	if (drm_updateScreenFormat() != 0) {
+		LOG(" Unsupported pixel format: 0x%x, exiting.\n", drmState.pixelFormat);
+		if (!suspend)
+			drmModeFreeFB2(buffer);
+		drmModeFreeCrtc(crtc);
+		exit(EXIT_FAILURE);
+	}
+
 	// DRM debug information
 	LOG(" Real screen mode: %ux%u%c @ %.2f Hz.\n", drmState.modeWidth,
 		drmState.modeHeight, drmState.scanFactor == 2 ? 'i' : 'p', drmState.refreshRate);
@@ -213,8 +215,6 @@ int drm_initFrameBuffer(void) {
 		LOG(" Initial DRM framebuffer detected (#%d): %u.\n", fbIndex + 1, fbId[fbIndex]);
 		LOG(" Ratio of framebuffer size to actual screen size: %d:1.\n", drmState.multiBuffer);
 	}
-
-	drm_updateScreenFormat();
 
 	if (!suspend) {
 		drmBufferMapList[fbIndex] = drm_mapFrameBuffer(buffer);
@@ -262,7 +262,6 @@ void drm_closeFrameBuffer(void) {
 			munmap(drmBufferMapList[i], screenInfo.stride * screenInfo.height * drmState.multiBuffer);
 	}
 
-	LOG(" DRM framebuffer '%s' closed.\n", DRM_DEVICE);
 	close(drmFd);
 
 	// Reset all framebuffer values
@@ -447,7 +446,7 @@ int drm_checkBufferStateChange(void) {
 
 	// Perform a soft reinit if trigger is set
 	if (softReinit) {
-		LOG("-- DRM framebuffer state changed --\n");
+		LOG(" DRM framebuffer state changed, reinitialization started...\n");
 		drmModeFreeCrtc(crtc);
 
 		closeFrameBuffer();
@@ -462,7 +461,7 @@ int drm_checkBufferStateChange(void) {
 	return 0;
 }
 
-void drm_updateScreenFormat(void) {
+int drm_updateScreenFormat(void) {
 	screenFormat.width = screenInfo.width;
 	screenFormat.height = screenInfo.height;
 	screenFormat.size = screenInfo.width * screenInfo.height * (BPP / CHAR_BIT);
@@ -478,7 +477,7 @@ void drm_updateScreenFormat(void) {
 		screenFormat.redMax		= 8;
 		screenFormat.greenMax		= 8;
 		screenFormat.blueMax		= 8;
-		break;
+		return 0;
 
 	case DRM_FORMAT_ABGR8888:
 		screenFormat.bitsPerPixel	= 32;
@@ -488,11 +487,10 @@ void drm_updateScreenFormat(void) {
 		screenFormat.redMax		= 8;
 		screenFormat.greenMax		= 8;
 		screenFormat.blueMax		= 8;
-		break;
+		return 0;
 
 	default:
-		LOG(" Unsupported pixel format: 0x%x, exiting.\n", drmState.pixelFormat);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 }
 
