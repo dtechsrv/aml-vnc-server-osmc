@@ -197,7 +197,8 @@ int drm_initFrameBuffer(void) {
 		drmState.fbId = 0;
 	}
 
-	if (drm_updateScreenFormat() != 0) {
+	drmState.colorGroup = drm_updateScreenFormat();
+	if (!drmState.colorGroup) {
 		LOG(" Unsupported pixel format: 0x%x, exiting.\n", drmState.pixelFormat);
 		if (!suspend)
 			drmModeFreeFB2(buffer);
@@ -275,7 +276,7 @@ int drm_checkBufferStateChange(void) {
 	double refreshRate;
 	int fbActive = -1;
 	int softReinit = 0;
-	int scanFactor, i;
+	int scanFactor, colorGroup, i;
 
 	// Reset DRM reinit delay
 	if (reinitDelay != DRM_DELAY)
@@ -293,8 +294,8 @@ int drm_checkBufferStateChange(void) {
 		if (!suspend) {
 			drmModeFreeCrtc(crtc);
 
-			LOG(" No active framebuffer found, retry after %d ms delay.\n", DRM_DELAY);
 			if (reinitDelay > 0) {
+				LOG(" No active framebuffer found, retry after %d ms delay.\n", reinitDelay);
 				usleep(reinitDelay * 1000);
 				reinitDelay = 0; // This indicates that the delay was already in use, so it is no longer needed later
 			}
@@ -355,12 +356,18 @@ int drm_checkBufferStateChange(void) {
 			softReinit = 1;
 		}
 
-		// Pixel format change - Hard reinit is required because libvncserver does not update color profile during active server session
+		// Pixel format change
 		if (buffer->pixel_format != drmState.pixelFormat) {
 			LOG(" Screen pixel format changed from %.4s to %.4s.\n", (char *)&drmState.pixelFormat, (char *)&buffer->pixel_format);
-			drmModeFreeFB2(buffer);
-			drmModeFreeCrtc(crtc);
-			return 1;
+
+			colorGroup = drm_updateScreenFormat();
+			if (colorGroup != drmState.colorGroup) {
+				drmModeFreeFB2(buffer);
+				drmModeFreeCrtc(crtc);
+				return 1; // Hard reinit is required because libvncserver does not update color profile during active server session
+			} else {
+				softReinit = 1;
+			}
 		}
 
 		// Framebuffer ID change
@@ -477,7 +484,7 @@ int drm_updateScreenFormat(void) {
 		screenFormat.redMax		= 8;
 		screenFormat.greenMax		= 8;
 		screenFormat.blueMax		= 8;
-		return 0;
+		return 1;
 
 	case DRM_FORMAT_ABGR8888:
 		screenFormat.bitsPerPixel	= 32;
@@ -487,10 +494,10 @@ int drm_updateScreenFormat(void) {
 		screenFormat.redMax		= 8;
 		screenFormat.greenMax		= 8;
 		screenFormat.blueMax		= 8;
-		return 0;
+		return 2;
 
 	default:
-		return -1;
+		return 0; // Unsupported pixel format
 	}
 }
 

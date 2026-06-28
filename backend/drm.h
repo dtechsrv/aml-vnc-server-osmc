@@ -31,6 +31,7 @@ typedef struct {
     double refreshRate;
     int multiBuffer;
     int scanFactor;
+    int colorGroup;
 } drm_state_t;
 
 extern drm_state_t drmState;
