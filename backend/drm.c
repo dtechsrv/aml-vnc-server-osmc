@@ -197,7 +197,7 @@ int drm_initFrameBuffer(void) {
 		drmState.fbId = 0;
 	}
 
-	drmState.colorGroup = drm_updateScreenFormat();
+	drmState.colorGroup = drm_updateScreenFormat(drmState.pixelFormat);
 	if (!drmState.colorGroup) {
 		LOG(" Unsupported pixel format: 0x%x, exiting.\n", drmState.pixelFormat);
 		if (!suspend)
@@ -361,8 +361,9 @@ int drm_checkBufferStateChange(void) {
 		if (buffer->pixel_format != drmState.pixelFormat) {
 			LOG(" Screen pixel format changed from %.4s to %.4s.\n", (char *)&drmState.pixelFormat, (char *)&buffer->pixel_format);
 
-			colorGroup = drm_updateScreenFormat();
+			colorGroup = drm_updateScreenFormat(buffer->pixel_format);
 			if (colorGroup != drmState.colorGroup) {
+				LOG(" Screen color group changed from %d to %d.\n", drmState.colorGroup, colorGroup);
 				drmModeFreeFB2(buffer);
 				drmModeFreeCrtc(crtc);
 				return 1; // Hard reinit is required because libvncserver does not update color profile during active server session
@@ -475,12 +476,12 @@ int drm_checkBufferStateChange(void) {
 	return 0;
 }
 
-int drm_updateScreenFormat(void) {
+int drm_updateScreenFormat(uint32_t pixelFormat) {
 	screenFormat.width = screenInfo.width;
 	screenFormat.height = screenInfo.height;
 	screenFormat.size = screenInfo.width * screenInfo.height * (BPP / CHAR_BIT);
 
-	switch (drmState.pixelFormat) {
+	switch (pixelFormat) {
 
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
