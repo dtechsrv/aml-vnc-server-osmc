@@ -276,6 +276,7 @@ int drm_checkBufferStateChange(void) {
 	double refreshRate;
 	int fbActive = -1;
 	int softReinit = 0;
+	int multiBuffer = 1;
 	int scanFactor, colorGroup, i;
 
 	// Reset DRM reinit delay
@@ -370,6 +371,13 @@ int drm_checkBufferStateChange(void) {
 			}
 		}
 
+		// Multibuffer ratio change
+		multiBuffer = buffer->height / (buffer->width * crtc->mode.vdisplay / crtc->mode.hdisplay);
+		if (multiBuffer != drmState.multiBuffer) {
+			LOG(" Ratio of buffer to screen size changed from %d:1 to %d:1.\n", drmState.multiBuffer, multiBuffer);
+			softReinit = 1;
+		}
+
 		// Framebuffer ID change
 		if (buffer->fb_id != drmState.fbId && !softReinit) {
 
@@ -438,8 +446,7 @@ int drm_checkBufferStateChange(void) {
 
 		// Buffer width and height -> A hard reinit is required because the same policy applies as for resolution
 		if (buffer->width != screenInfo.width ||
-		    (buffer->height / drmState.multiBuffer) != screenInfo.height) {
-
+		    (buffer->height / multiBuffer) != screenInfo.height) {
 			LOG(" DRM framebuffer size changed from %ux%u to %ux%u.\n",
 				screenInfo.width, screenInfo.height,
 				buffer->width, buffer->height);
